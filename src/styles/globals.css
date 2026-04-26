@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #0a0c10;
+  --panel: #111318;
+  --card: #181b22;
+  --border: #252933;
+  --accent: #e8c44a;
+  --accent2: #5b8dee;
+  --danger: #e85b5b;
+  --success: #4be87a;
+  --text: #d4d8e2;
+  --muted: #636b7a;
+  --slot-active: #1a2035;
+
+  --Normal: #9ea09e; --Fire: #e75f3b; --Water: #6294f5;
+  --Electric: #f8d948; --Grass: #72c950; --Ice: #96d9d6;
+  --Fighting: #c12f2a; --Poison: #a63f9e; --Ground: #d9a550;
+  --Flying: #89aae3; --Psychic: #e8536e; --Bug: #a8b820;
+  --Rock: #b8a038; --Ghost: #705898; --Dragon: #6f35fc;
+  --Dark: #4f3a26; --Steel: #b8b8d0; --Fairy: #f0a2c0;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+select, input[type=number] {
+  background: #0e1016;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 2px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+select:hover, input[type=number]:hover { border-color: #353d50; }
+select:focus, input[type=number]:focus { border-color: var(--accent2); }
+select option { background: #141820; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+.type-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
