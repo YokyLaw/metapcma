@@ -52,9 +52,7 @@ export default function PokemonCard({ slotIndex }: Props) {
 
   if (ccMoveData && ccMoveData.length > 0) {
     ccMoveData.forEach(m => { movePercent[m.move.name] = m.percent })
-    movePool = ccMoveData
-      .filter(m => MOVE_DATA[m.move.name]?.bp > 0 && MOVE_DATA[m.move.name]?.category !== 'Status')
-      .map(m => m.move.name)
+    movePool = ccMoveData.map(m => m.move.name)
   } else {
     movePool = OFFENSIVE_MOVE_NAMES
   }

@@ -54,28 +54,33 @@ export interface AdvOverride {
   ability: string
 }
 
+export interface MoveSlotResult {
+  move: string
+  moveType: string
+  calc: {
+    minPct: number
+    maxPct: number
+    isOHKO: boolean
+    isKO: boolean
+  } | null
+}
+
 export interface TableRow {
   name: string
   type1: string
   type2: string
   usage: number
-  move: string
+  defHP: number
+  move: string      // best damage move (for sort)
   moveType: string
-  moveCategory: string
   minPct: number
   maxPct: number
-  minDmg: number
-  maxDmg: number
-  defHP: number
   isOHKO: boolean
   isKO: boolean
+  moveResults: (MoveSlotResult | null)[]
+  defaultAbility?: string
 }
 
 export type Weather = '' | 'Sun' | 'Rain' | 'Sand' | 'Snow'
 export type Terrain = '' | 'Electric' | 'Grassy' | 'Psychic' | 'Misty'
 export type SortKey = 'usage' | 'name' | 'type' | 'move' | 'minPct' | 'maxPct'
-
-export interface CCData {
-  moves: string[]
-  items: string[]
-}

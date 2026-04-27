@@ -7,14 +7,12 @@ import DamageRow from './DamageRow'
 interface ExtendedRow extends TableRow {
   spHP?: number; spDf?: number; spSd?: number
   advNatPlus?: string; advNatMinus?: string; advAbility?: string
-  defStatKey?: string
 }
 
 export default function DamageTable() {
   const { state, dispatch } = useAppState()
   const { tableData, sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage, advStats } = state
 
-  // Merge advStats into tableData rows
   const enrichedData: ExtendedRow[] = tableData.map(row => {
     const adv = advStats[row.name] || {}
     return {
@@ -25,7 +23,6 @@ export default function DamageTable() {
       advNatPlus: adv.natPlus || '',
       advNatMinus: adv.natMinus || '',
       advAbility: adv.ability || '',
-      defStatKey: row.moveCategory === 'Physical' ? 'df' : 'sd',
     }
   })
 
@@ -56,10 +53,7 @@ export default function DamageTable() {
         <thead>
           <tr>
             <th className={thClass('name')} onClick={() => handleSort('name')}>POKÉMON</th>
-            <th className={thClass('type')} onClick={() => handleSort('type1' as SortKey)}>TYPE</th>
-            <th className={thClass('move')} onClick={() => handleSort('move' as SortKey)}>MEILLEURE ATTAQUE</th>
-            <th className={thClass('minPct')} onClick={() => handleSort('minPct')}>MIN %</th>
-            <th className={thClass('maxPct')} onClick={() => handleSort('maxPct')}>MAX %</th>
+            <th className={thClass('move')} onClick={() => handleSort('move' as SortKey)}>DÉGATS</th>
           </tr>
         </thead>
         <tbody>

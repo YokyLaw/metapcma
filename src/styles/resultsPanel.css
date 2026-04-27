@@ -114,12 +114,42 @@
 .pct-text.ko { color: var(--danger); }
 .pct-text.ohko { color: var(--success); }
 
+.poke-name-cell { display: flex; align-items: center; gap: 6px; }
+.poke-name-info { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.poke-type-dots { display: inline-flex; align-items: center; gap: 3px; margin: 0 4px; vertical-align: middle; }
+
+.dmg-cell { vertical-align: middle; }
+.dmg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 12px;
+}
+.dmg-slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.dmg-slot.empty { color: var(--muted); }
+.dmg-slot.ko    { color: var(--danger); }
+.dmg-slot.ohko  { color: var(--success); }
+.move-cell-name { font-weight: 500; }
+.move-cell-pct {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
+.move-cell-pct.ko  { color: var(--danger); }
+.move-cell-pct.ohko { color: var(--success); }
+
 /* Damage table */
 .damage-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
+.damage-table th:nth-child(2) { width: auto; }
 .damage-table th {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
@@ -140,20 +170,13 @@
   vertical-align: middle;
 }
 .damage-table tr:hover td { background: #141720; }
-.damage-table tr.subrow td {
-  padding: 3px 10px 6px;
-  border-bottom: 1px solid var(--border);
-  background: #0f1117;
-}
-.damage-table tr.mainrow td { border-bottom: none; }
+.damage-table td:first-child { vertical-align: top; padding-bottom: 6px; }
 
-.subrow-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-}
+.poke-controls { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; }
+.poke-controls-spinners { display: flex; align-items: center; gap: 6px; }
+.poke-controls-natures  { display: flex; align-items: center; gap: 6px; }
+.poke-controls-natures .adv-nat-sel { flex: 1; min-width: 0; max-width: none; font-size: 9px; }
+.poke-controls .def-spinner-label { min-width: 18px; font-size: 8px; }
 
 /* Inline defender stat spinners */
 .def-spinner {
