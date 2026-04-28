@@ -9,7 +9,8 @@
       "Bash(netstat -ano)",
       "Bash(findstr \":3000\")",
       "WebFetch(domain:www.coupcritique.fr)",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(npx next *)"
     ]
   }
 }

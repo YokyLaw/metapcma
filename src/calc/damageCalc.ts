@@ -380,10 +380,11 @@ export function buildTableRow(
     }
   })
 
-  const sortMove    = bestResult?.moveName ?? (attacker.moves.find(m => m) ?? '')
-  const sortType    = bestResult?.moveType ?? (MOVE_DATA[sortMove]?.type ?? 'Normal')
-  const sortMinPct  = bestResult?.minPct ?? 0
-  const sortMaxPct  = bestResult?.maxPct ?? 0
+  const best = bestResult as CalcResult | null
+  const sortMove    = best?.moveName ?? (attacker.moves.find(m => m) ?? '')
+  const sortType    = best?.moveType ?? (MOVE_DATA[sortMove]?.type ?? 'Normal')
+  const sortMinPct  = best?.minPct ?? 0
+  const sortMaxPct  = best?.maxPct ?? 0
 
   return {
     name: defName,

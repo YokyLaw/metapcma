@@ -1,95 +1,70 @@
 import { useAppState } from '../context/AppContext'
-import { getCCId } from '../calc/teamHelpers'
-import { CC_IDS } from '../data/usageData'
+import { getBaseNameForCC } from '../calc/teamHelpers'
+import type { CCMoveEntry } from '../calc/teamHelpers'
 
-interface UsageAbilityEntry { ability: { name: string }; percent: number }
-
-interface CCData {
-  usageMoves?: unknown[]
+interface CCUsage {
+  provider: string
+  usageMoves?: CCMoveEntry[]
   usageItems?: unknown[]
-  usageAbilities?: UsageAbilityEntry[]
 }
 
-interface CCCacheEntry {
-  ready: boolean
-  data?: CCData | null
-  promise?: Promise<CCData | null>
+interface CCApiResponse {
+  usages?: CCUsage[]
+  pokemon?: { id?: number; usages?: CCUsage[] }
+  id?: number
 }
 
-const CC_CACHE: Record<number, CCCacheEntry> = {}
+function parseMoveNames(data: unknown): string[] {
+  if (Array.isArray(data)) {
+    return (data as unknown[]).map(m =>
+      typeof m === 'string' ? m : (m as { name?: string; move?: { name?: string } }).name ?? (m as { move?: { name?: string } }).move?.name ?? ''
+    ).filter(Boolean)
+  }
+  const obj = data as { moves?: unknown } | null
+  if (obj?.moves) return parseMoveNames(obj.moves)
+  return []
+}
 
-function fetchCC(id: number): Promise<CCData | null> {
-  if (CC_CACHE[id]?.ready) return Promise.resolve(CC_CACHE[id].data ?? null)
-  if (CC_CACHE[id]?.promise) return CC_CACHE[id].promise!
+async function fetchCC(name: string): Promise<{ ccMoves: CCMoveEntry[] | null; ccItems: unknown[] | null }> {
+  try {
+    const res = await fetch('/api/cc/' + encodeURIComponent(name))
+    const json: CCApiResponse = await res.json()
+    const usages = json.usages ?? json.pokemon?.usages
+    const championsUsage = usages?.find(u => u.provider === 'champions')
 
-  const promise = fetch('https://www.coupcritique.fr/api/pokemons/' + id)
-    .then(r => r.json())
-    .then((json): CCData | null => {
-      let usage: CCData | null = null
-      if (json.pokemon?.usages) {
-        usage = json.pokemon.usages.find((u: { provider: string }) => u.provider === 'champions') ?? null
+    if (championsUsage) {
+      return {
+        ccMoves: championsUsage.usageMoves ?? null,
+        ccItems: championsUsage.usageItems ?? null,
       }
-      CC_CACHE[id] = { ready: true, data: usage }
-      return usage
-    })
-    .catch((): null => {
-      CC_CACHE[id] = { ready: true, data: null }
-      return null
-    })
+    }
 
-  CC_CACHE[id] = { ready: false, promise }
-  return promise
-}
+    const id = json.pokemon?.id ?? json.id
+    if (!id) return { ccMoves: null, ccItems: null }
 
-export function getCCData(pokeName: string): CCData | null | undefined {
-  const id = getCCId(pokeName)
-  if (!id) return null
-  const entry = CC_CACHE[id]
-  return entry?.ready ? (entry.data ?? null) : undefined
-}
+    const movesRes = await fetch('/api/cc/moves/' + id)
+    const movesData: unknown = await movesRes.json()
+    const names = parseMoveNames(movesData)
+    const ccMoves: CCMoveEntry[] = names.map(n => ({ move: { name: n }, percent: 0 }))
 
-export function getTopCCAbility(pokeName: string): string | null {
-  const id = getCCId(pokeName)
-  if (!id) return null
-  const entry = CC_CACHE[id]
-  if (!entry?.ready || !entry.data?.usageAbilities?.length) return null
-  return entry.data.usageAbilities[0].ability.name ?? null
-}
-
-export function prefetchAll(): void {
-  const seen = new Set<number>()
-  Object.values(CC_IDS).forEach(id => {
-    if (!seen.has(id)) { seen.add(id); fetchCC(id) }
-  })
+    return { ccMoves: ccMoves.length > 0 ? ccMoves : null, ccItems: null }
+  } catch {
+    return { ccMoves: null, ccItems: null }
+  }
 }
 
 export function useFetchCCForSlot() {
   const { dispatch } = useAppState()
 
   return function fetchForSlot(slotIdx: number, pokeName: string) {
-    const id = getCCId(pokeName)
-    if (!id) return
-
-    const entry = CC_CACHE[id]
-    if (entry?.ready) {
-      const data = entry.data ?? null
+    const name = getBaseNameForCC(pokeName)
+    fetchCC(name).then(({ ccMoves, ccItems }) => {
       dispatch({
         type: 'SET_CC_DATA',
         slot: slotIdx,
         pokemon: pokeName,
-        ccMoves: data?.usageMoves ?? null,
-        ccItems: data?.usageItems ?? null,
-      })
-      return
-    }
-
-    fetchCC(id).then(data => {
-      dispatch({
-        type: 'SET_CC_DATA',
-        slot: slotIdx,
-        pokemon: pokeName,
-        ccMoves: data?.usageMoves ?? null,
-        ccItems: data?.usageItems ?? null,
+        ccMoves,
+        ccItems,
       })
     })
   }

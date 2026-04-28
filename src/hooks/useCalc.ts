@@ -5,7 +5,6 @@ import { USAGE_MAP } from '../data/usageData'
 import { getStats } from '../calc/statCalc'
 import { getEffectivePokeName } from '../calc/teamHelpers'
 import { buildTableRow } from '../calc/damageCalc'
-import { getTopCCAbility } from './useCC'
 import type { TableRow } from '../types'
 
 export function useCalc() {
@@ -42,8 +41,7 @@ export function useCalc() {
 
       for (const [defName, defData] of Object.entries(POKE_DATA)) {
         if (!defData?.bs) continue
-        const topAbility = getTopCCAbility(defName) || undefined
-        const row = buildTableRow(slot, atkStats, defName, defData, advStats, weather, terrain, topAbility)
+        const row = buildTableRow(slot, atkStats, defName, defData, advStats, weather, terrain)
         if (!row) continue
         row.usage = USAGE_MAP[defName] ?? -1
         tableData.push(row)

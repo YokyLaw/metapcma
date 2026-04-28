@@ -7,7 +7,6 @@ import { ABILITY_DATA } from '../../data/abilityData'
 import { STAT_KEYS, STAT_LABELS, NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
 import { getEffectivePokeName, getAbilitiesFor } from '../../calc/teamHelpers'
 import type { CCMoveEntry } from '../../calc/teamHelpers'
-import { OFFENSIVE_MOVE_NAMES } from '../../data/moveData'
 import { getStats } from '../../calc/statCalc'
 import MegaBar from './MegaBar'
 import MoveSlot from './MoveSlot'
@@ -46,11 +45,10 @@ export default function PokemonCard({ slotIndex }: Props) {
     dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field, value })
   }
 
-  // Move pool from CC data or full list
   const ccMoveData = slot.ccMoves as CCMoveEntry[] | null
   const moves: CCMoveEntry[] = ccMoveData && ccMoveData.length > 0
     ? ccMoveData
-    : OFFENSIVE_MOVE_NAMES.map(n => ({ move: { name: n }, percent: 0 }))
+    : slot.moves.filter(Boolean).map(n => ({ move: { name: n }, percent: 0 }))
 
   // Item options
   const ccItemsData = slot.ccItems as Array<{ item: { name: string }; percent: number }> | null
