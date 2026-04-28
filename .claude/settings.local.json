@@ -8,7 +8,8 @@
       "Bash(npx kill-port *)",
       "Bash(netstat -ano)",
       "Bash(findstr \":3000\")",
-      "WebFetch(domain:www.coupcritique.fr)"
+      "WebFetch(domain:www.coupcritique.fr)",
+      "Bash(npm test *)"
     ]
   }
 }

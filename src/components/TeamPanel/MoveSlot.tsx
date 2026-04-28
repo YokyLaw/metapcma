@@ -1,15 +1,15 @@
 import { useAppState } from '../../context/AppContext'
 import { MOVE_DATA } from '../../data/moveData'
+import type { CCMoveEntry } from '../../calc/teamHelpers'
 
 interface Props {
   slotIndex: number
   moveIdx: number
   value: string
-  movePool: string[]
-  movePercent: Record<string, number>
+  moves: CCMoveEntry[]
 }
 
-export default function MoveSlot({ slotIndex, moveIdx, value, movePool, movePercent }: Props) {
+export default function MoveSlot({ slotIndex, moveIdx, value, moves }: Props) {
   const { dispatch } = useAppState()
 
   const dotColor = value && MOVE_DATA[value]
@@ -26,9 +26,9 @@ export default function MoveSlot({ slotIndex, moveIdx, value, movePool, movePerc
       <div className="move-type-dot" style={{ background: dotColor }} />
       <select value={value} onChange={handleChange} onClick={e => e.stopPropagation()}>
         <option value="">(Aucun)</option>
-        {movePool.map(n => {
-          const pct = movePercent[n] != null ? ` (${Math.floor(movePercent[n] * 10) / 10}%)` : ''
-          return <option key={n} value={n}>{n}{pct}</option>
+        {moves.map(m => {
+          const pct = m.percent > 0 ? ` (${Math.floor(m.percent * 10) / 10}%)` : ''
+          return <option key={m.move.name} value={m.move.name}>{m.move.name}{pct}</option>
         })}
       </select>
     </div>

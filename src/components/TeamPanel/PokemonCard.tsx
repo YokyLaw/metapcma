@@ -2,11 +2,12 @@ import { useEffect } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { useFetchCCForSlot } from '../../hooks/useCC'
 import { POKE_DATA } from '../../data/pokeData'
-import { MOVE_DATA, OFFENSIVE_MOVE_NAMES } from '../../data/moveData'
 import { ITEM_DATA } from '../../data/itemData'
 import { ABILITY_DATA } from '../../data/abilityData'
 import { STAT_KEYS, STAT_LABELS, NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
 import { getEffectivePokeName, getAbilitiesFor } from '../../calc/teamHelpers'
+import type { CCMoveEntry } from '../../calc/teamHelpers'
+import { OFFENSIVE_MOVE_NAMES } from '../../data/moveData'
 import { getStats } from '../../calc/statCalc'
 import MegaBar from './MegaBar'
 import MoveSlot from './MoveSlot'
@@ -46,16 +47,10 @@ export default function PokemonCard({ slotIndex }: Props) {
   }
 
   // Move pool from CC data or full list
-  const ccMoveData = slot.ccMoves as Array<{ move: { name: string }; percent: number }> | null
-  const movePercent: Record<string, number> = {}
-  let movePool: string[]
-
-  if (ccMoveData && ccMoveData.length > 0) {
-    ccMoveData.forEach(m => { movePercent[m.move.name] = m.percent })
-    movePool = ccMoveData.map(m => m.move.name)
-  } else {
-    movePool = OFFENSIVE_MOVE_NAMES
-  }
+  const ccMoveData = slot.ccMoves as CCMoveEntry[] | null
+  const moves: CCMoveEntry[] = ccMoveData && ccMoveData.length > 0
+    ? ccMoveData
+    : OFFENSIVE_MOVE_NAMES.map(n => ({ move: { name: n }, percent: 0 }))
 
   // Item options
   const ccItemsData = slot.ccItems as Array<{ item: { name: string }; percent: number }> | null
@@ -175,8 +170,7 @@ export default function PokemonCard({ slotIndex }: Props) {
             slotIndex={slotIndex}
             moveIdx={mi}
             value={mv}
-            movePool={movePool}
-            movePercent={movePercent}
+            moves={moves}
           />
         ))}
       </div>
