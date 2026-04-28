@@ -52,6 +52,9 @@ export interface AdvOverride {
   sp_hp: number
   sp_df: number
   sp_sd: number
+  sp_sp: number
+  sp_at: number
+  sp_sa: number
   natPlus: string
   natMinus: string
   ability: string
@@ -86,4 +89,5 @@ export interface TableRow {
 
 export type Weather = '' | 'Sun' | 'Rain' | 'Sand' | 'Snow'
 export type Terrain = '' | 'Electric' | 'Grassy' | 'Psychic' | 'Misty'
+export type Tailwind = boolean
 export type SortKey = 'usage' | 'name' | 'type' | 'move' | 'minPct' | 'maxPct'

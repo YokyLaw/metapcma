@@ -1,6 +1,5 @@
 .results-panel {
   grid-column: 2;
-  grid-row: 2;
   background: var(--bg);
   overflow-y: auto;
   padding: 16px 20px;
@@ -101,7 +100,8 @@
   background: var(--accent);
   transition: width 0.3s;
 }
-.dmg-bar.ko { background: var(--danger); }
+.dmg-bar.ko     { background: #e07820; }
+.dmg-bar.ko-low { background: var(--danger); }
 .dmg-bar.ohko { background: var(--success); }
 
 .pct-text {
@@ -111,11 +111,13 @@
   min-width: 52px;
   text-align: right;
 }
-.pct-text.ko { color: var(--danger); }
+.pct-text.ko     { color: #e07820; }
+.pct-text.ko-low { color: var(--danger); }
 .pct-text.ohko { color: var(--success); }
 
 .poke-name-cell { display: flex; align-items: center; gap: 6px; }
-.poke-name-info { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px; }
+.poke-name-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; overflow: hidden; }
+.poke-name-info > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
 .adv-sprite { height: 36px; width: 36px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
 .poke-type-dots { display: inline-flex; align-items: center; gap: 3px; margin: 0 4px; vertical-align: middle; }
 
@@ -133,7 +135,8 @@
   font-size: 13px;
 }
 .dmg-slot.empty { color: var(--muted); }
-.dmg-slot.ko    { color: var(--danger); }
+.dmg-slot.ko     { color: #e07820; }
+.dmg-slot.ko-low { color: var(--danger); }
 .dmg-slot.ohko  { color: var(--success); }
 .move-cell-name { font-weight: 500; }
 .move-cell-pct {
@@ -141,7 +144,8 @@
   font-size: 10px;
   color: var(--muted);
 }
-.move-cell-pct.ko  { color: var(--danger); }
+.move-cell-pct.ko     { color: #e07820; }
+.move-cell-pct.ko-low { color: var(--danger); }
 .move-cell-pct.ohko { color: var(--success); }
 
 /* Damage table */

@@ -11,7 +11,10 @@
       "WebFetch(domain:www.coupcritique.fr)",
       "Bash(npm test *)",
       "Bash(npx next *)",
-      "Bash(xargs ls *)"
+      "Bash(xargs ls *)",
+      "Bash(node -e \"const d = require\\('./src/data/pokeData.ts'\\); console.log\\(JSON.stringify\\(d.POKE_DATA['Garchomp']\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node *)"
     ]
   }
 }

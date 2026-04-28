@@ -107,6 +107,23 @@ export default function PokemonCard({ slotIndex }: Props) {
     return (computedStats as Record<string, number>)[key] || 0
   }
 
+  const basePokeData = slot.pokemon ? POKE_DATA[slot.pokemon] : null
+  const megaPokeData = slot.megaForme ? POKE_DATA[slot.megaForme] : null
+
+  function getBaseStatChange(key: string): number {
+    if (!basePokeData || !megaPokeData) return 0
+    const base = (basePokeData.bs as Record<string, number>)[key] || 0
+    const mega = (megaPokeData.bs as Record<string, number>)[key] || 0
+    return mega > base ? 1 : mega < base ? -1 : 0
+  }
+
+  function getBaseStatDiff(key: string): number {
+    if (!basePokeData || !megaPokeData) return 0
+    const base = (basePokeData.bs as Record<string, number>)[key] || 0
+    const mega = (megaPokeData.bs as Record<string, number>)[key] || 0
+    return mega - base
+  }
+
   return (
     <div
       className={'pokemon-card' + (isSelected ? ' selected' : '')}
@@ -184,6 +201,8 @@ export default function PokemonCard({ slotIndex }: Props) {
             boostValue={key !== 'hp' ? (slot.boosts as Record<string, number>)[key] || 0 : 0}
             computedTotal={getTotal(key)}
             isBoostable={key !== 'hp'}
+            baseStatChange={getBaseStatChange(key)}
+            baseStatDiff={getBaseStatDiff(key)}
           />
         ))}
       </div>

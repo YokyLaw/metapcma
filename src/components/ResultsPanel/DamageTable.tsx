@@ -6,6 +6,7 @@ import DamageRow from './DamageRow'
 
 interface ExtendedRow extends TableRow {
   spHP?: number; spDf?: number; spSd?: number
+  spSp?: number; spAt?: number; spSa?: number
   advNatPlus?: string; advNatMinus?: string; advAbility?: string
 }
 
@@ -20,6 +21,9 @@ export default function DamageTable() {
       spHP: adv.sp_hp ?? 0,
       spDf: adv.sp_df ?? 0,
       spSd: adv.sp_sd ?? 0,
+      spSp: adv.sp_sp ?? 0,
+      spAt: adv.sp_at ?? 0,
+      spSa: adv.sp_sa ?? 0,
       advNatPlus: adv.natPlus || '',
       advNatMinus: adv.natMinus || '',
       advAbility: adv.ability || '',

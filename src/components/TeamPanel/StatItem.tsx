@@ -11,10 +11,12 @@ interface Props {
   boostValue: number
   computedTotal: number
   isBoostable: boolean
+  baseStatChange?: number
+  baseStatDiff?: number
 }
 
 export default function StatItem({
-  slotIndex, statKey, statLabel, spValue, boostValue, computedTotal, isBoostable
+  slotIndex, statKey, statLabel, spValue, boostValue, computedTotal, isBoostable, baseStatChange = 0, baseStatDiff = 0
 }: Props) {
   const { dispatch } = useAppState()
   const spValRef = useRef<HTMLSpanElement>(null)
@@ -60,7 +62,17 @@ export default function StatItem({
           >
             {spValue}
           </span>
-          <span className="stat-total">{computedTotal}</span>
+          <span className={
+            'stat-total' +
+            (baseStatChange > 0 ? ' stat-up' : baseStatChange < 0 ? ' stat-down' : '')
+          }>
+            {computedTotal}
+            {baseStatDiff !== 0 && (
+              <span className="stat-diff">
+                ({baseStatDiff > 0 ? '+' : ''}{baseStatDiff})
+              </span>
+            )}
+          </span>
         </div>
         <button className="sp-btn" onClick={e => stepSP(-1, e)}>▼</button>
       </div>

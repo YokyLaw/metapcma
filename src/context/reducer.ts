@@ -28,6 +28,7 @@ export interface AppState {
   selectedSlot: number | null
   weather: Weather
   terrain: Terrain
+  tailwind: boolean
   advStats: Record<string, Partial<AdvOverride>>
   tableData: TableRow[]
   sortKey: SortKey
@@ -43,6 +44,7 @@ export const initialState: AppState = {
   selectedSlot: null,
   weather: '',
   terrain: '',
+  tailwind: false,
   advStats: {},
   tableData: [],
   sortKey: 'usage',
@@ -63,7 +65,8 @@ export type Action =
   | { type: 'SET_CC_DATA'; slot: number; pokemon: string; ccMoves: unknown[] | null; ccItems: unknown[] | null; ccAbilities: unknown[] | null }
   | { type: 'SET_WEATHER'; weather: Weather }
   | { type: 'SET_TERRAIN'; terrain: Terrain }
-  | { type: 'SET_ADV_STAT'; pokeName: string; statKey: 'sp_hp' | 'sp_df' | 'sp_sd'; value: number }
+  | { type: 'SET_TAILWIND'; value: boolean }
+  | { type: 'SET_ADV_STAT'; pokeName: string; statKey: 'sp_hp' | 'sp_df' | 'sp_sd' | 'sp_sp' | 'sp_at' | 'sp_sa'; value: number }
   | { type: 'SET_ADV_NATURE'; pokeName: string; field: 'natPlus' | 'natMinus'; value: string }
   | { type: 'SET_ADV_ABILITY'; pokeName: string; value: string }
   | { type: 'SET_TABLE_DATA'; tableData: TableRow[] }
@@ -174,11 +177,12 @@ export function appReducer(state: AppState, action: Action): AppState {
       const team = [...state.team]
       if (team[action.slot].pokemon === action.pokemon) {
         const slot = { ...team[action.slot] }
+        const wasFirstLoad = slot.ccAbilities === null
         slot.ccMoves     = action.ccMoves as string[] | null
         slot.ccItems     = action.ccItems as string[] | null
         slot.ccAbilities = action.ccAbilities as string[] | null
 
-        if (action.ccAbilities && action.ccAbilities.length > 0) {
+        if (wasFirstLoad && action.ccAbilities && action.ccAbilities.length > 0) {
           const defaultAbility = (getAbilitiesFor(action.pokemon) ?? [])[0] ?? ''
           if (slot.ability === defaultAbility || slot.ability === '') {
             const top = (action.ccAbilities[0] as { ability?: { name?: string } }).ability?.name
@@ -196,6 +200,9 @@ export function appReducer(state: AppState, action: Action): AppState {
 
     case 'SET_TERRAIN':
       return { ...state, terrain: action.terrain }
+
+    case 'SET_TAILWIND':
+      return { ...state, tailwind: action.value }
 
     case 'SET_ADV_STAT': {
       const prev = state.advStats[action.pokeName] || {}

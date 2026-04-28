@@ -1,12 +1,13 @@
 import { useAppState } from '../../context/AppContext'
 import { USAGE_MAP } from '../../data/usageData'
 import { NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
-import { getAbilitiesFor, spriteUrl } from '../../calc/teamHelpers'
+import { spriteUrl } from '../../calc/teamHelpers'
 import type { TableRow, MoveSlotResult } from '../../types'
 
 interface Props {
   row: TableRow & {
     spHP?: number; spDf?: number; spSd?: number
+    spSp?: number; spAt?: number; spSa?: number
     advNatPlus?: string; advNatMinus?: string; advAbility?: string
   }
 }
@@ -19,7 +20,7 @@ function MoveSlotDiv({ slot }: { slot: MoveSlotResult | null }) {
   if (!slot) return <div className="dmg-slot empty">—</div>
 
   const { calc } = slot
-  const pctClass = calc?.isOHKO ? ' ohko' : calc?.isKO ? ' ko' : ''
+  const pctClass = calc?.isOHKO ? ' ohko' : calc && calc.minPct < 50 ? ' ko-low' : calc?.isKO ? ' ko' : ''
 
   return (
     <div className={'dmg-slot' + pctClass}>
@@ -30,8 +31,6 @@ function MoveSlotDiv({ slot }: { slot: MoveSlotResult | null }) {
           {' '}({fmt(calc.minPct)}%–{fmt(calc.maxPct)}%)
         </span>
       )}
-      {calc?.isOHKO && <span className="ko-badge ohko">OHKO</span>}
-      {!calc?.isOHKO && calc?.isKO && <span className="ko-badge ko">KO?</span>}
     </div>
   )
 }
@@ -41,16 +40,20 @@ export default function DamageRow({ row }: Props) {
 
   const isOHKO = row.isOHKO
   const isKO   = row.isKO
-  const rowBg  = isOHKO ? 'ohko-row' : isKO ? 'ko-row' : ''
+  const rowBg  = isOHKO ? 'ohko-row' : row.minPct < 50 ? 'ko-low-row' : isKO ? 'ko-row' : ''
 
   const usage = USAGE_MAP[row.name]
-  const defAbilities = getAbilitiesFor(row.name) || []
+
+  const spMap: Record<string, number> = {
+    hp: row.spHP ?? 0, df: row.spDf ?? 0, sd: row.spSd ?? 0,
+    sp: row.spSp ?? 0, at: row.spAt ?? 0, sa: row.spSa ?? 0,
+  }
+  type AdvStatKey = 'sp_hp'|'sp_df'|'sp_sd'|'sp_sp'|'sp_at'|'sp_sa'
 
   function stepAdvStat(statKey: string, delta: number, e: React.MouseEvent) {
     e.stopPropagation()
-    const spKey = ('sp_' + statKey) as 'sp_hp' | 'sp_df' | 'sp_sd'
-    const cur = spKey === 'sp_hp' ? (row.spHP ?? 0) : spKey === 'sp_df' ? (row.spDf ?? 0) : (row.spSd ?? 0)
-    const next = Math.max(0, Math.min(32, cur + delta))
+    const spKey = ('sp_' + statKey) as AdvStatKey
+    const next = Math.max(0, Math.min(32, (spMap[statKey] ?? 0) + delta))
     dispatch({ type: 'SET_ADV_STAT', pokeName: row.name, statKey: spKey, value: next })
   }
 
@@ -58,7 +61,7 @@ export default function DamageRow({ row }: Props) {
     e.stopPropagation()
     const val = Math.max(0, Math.min(32, parseInt(el.textContent || '0') || 0))
     el.textContent = String(val)
-    dispatch({ type: 'SET_ADV_STAT', pokeName: row.name, statKey: ('sp_' + statKey) as 'sp_hp'|'sp_df'|'sp_sd', value: val })
+    dispatch({ type: 'SET_ADV_STAT', pokeName: row.name, statKey: ('sp_' + statKey) as AdvStatKey, value: val })
   }
 
   const slots = row.moveResults as (MoveSlotResult | null)[]
@@ -71,89 +74,63 @@ export default function DamageRow({ row }: Props) {
             <div className="poke-name-info">
               <img className="adv-sprite" src={spriteUrl(row.name)} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
               <strong>{row.name}</strong>
-              {isOHKO && <span className="ko-badge ohko">OHKO</span>}
-              {!isOHKO && isKO && <span className="ko-badge ko">KO?</span>}
-              <span className="poke-type-dots">
-                <span className="type-dot" style={{ background: `var(--${row.type1})` }} title={row.type1} />
-                {row.type2 && <span className="type-dot" style={{ background: `var(--${row.type2})` }} title={row.type2} />}
-              </span>
               {usage !== undefined && (
-                <span style={{ fontSize:10, color:'var(--muted)', fontFamily:"'IBM Plex Mono',monospace" }}>
+                <span style={{ fontSize:10, color:'var(--muted)', fontFamily:"'IBM Plex Mono',monospace", flexShrink:0 }}>
                   {usage.toFixed(1)}%
                 </span>
               )}
             </div>
-            {defAbilities.length > 0 && (
-              <select
-                className={'adv-nat-sel' + (row.advAbility || row.defaultAbility ? ' boosted' : '')}
-                value={row.advAbility || ''}
-                onChange={e => { e.stopPropagation(); dispatch({ type: 'SET_ADV_ABILITY', pokeName: row.name, value: e.target.value }) }}
-                onClick={e => e.stopPropagation()}
-              >
-                <option value="">{row.defaultAbility ?? ''}</option>
-                {defAbilities.filter(ab => ab !== row.defaultAbility).map(ab => <option key={ab} value={ab}>{ab}</option>)}
-              </select>
-            )}
           </div>
           <div className="poke-controls">
             <div className="poke-controls-spinners">
-              <div className="def-spinner">
-                <span className="def-spinner-label">HP</span>
-                <button className="def-sp-btn" onClick={e => stepAdvStat('hp', 1, e)}>▲</button>
-                <span
-                  className="def-sp-val"
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={e => commitAdvStat('hp', e.currentTarget, e)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
-                  onClick={e => e.stopPropagation()}
-                >{row.spHP ?? 0}</span>
-                <button className="def-sp-btn" onClick={e => stepAdvStat('hp', -1, e)}>▼</button>
-              </div>
-              <div className="def-spinner">
-                <span className="def-spinner-label">DEF</span>
-                <button className="def-sp-btn" onClick={e => stepAdvStat('df', 1, e)}>▲</button>
-                <span
-                  className="def-sp-val"
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={e => commitAdvStat('df', e.currentTarget, e)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
-                  onClick={e => e.stopPropagation()}
-                >{row.spDf ?? 0}</span>
-                <button className="def-sp-btn" onClick={e => stepAdvStat('df', -1, e)}>▼</button>
-              </div>
-              <div className="def-spinner">
-                <span className="def-spinner-label">SpD</span>
-                <button className="def-sp-btn" onClick={e => stepAdvStat('sd', 1, e)}>▲</button>
-                <span
-                  className="def-sp-val"
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={e => commitAdvStat('sd', e.currentTarget, e)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
-                  onClick={e => e.stopPropagation()}
-                >{row.spSd ?? 0}</span>
-                <button className="def-sp-btn" onClick={e => stepAdvStat('sd', -1, e)}>▼</button>
-              </div>
-            </div>
-            <div className="poke-controls-natures">
+              {(['hp','df','sd'] as const).map(key => (
+                <div key={key} className="def-spinner">
+                  <span className="def-spinner-label">{{ hp:'HP', df:'DEF', sd:'SpD' }[key]}</span>
+                  <button className="def-sp-btn" onClick={e => stepAdvStat(key, 1, e)}>▲</button>
+                  <span
+                    className="def-sp-val"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={e => commitAdvStat(key, e.currentTarget, e)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+                    onClick={e => e.stopPropagation()}
+                  >{spMap[key]}</span>
+                  <button className="def-sp-btn" onClick={e => stepAdvStat(key, -1, e)}>▼</button>
+                </div>
+              ))}
               <select
                 className={'adv-nat-sel' + (row.advNatPlus ? ' boosted' : '')}
                 value={row.advNatPlus || ''}
                 onChange={e => { e.stopPropagation(); dispatch({ type: 'SET_ADV_NATURE', pokeName: row.name, field: 'natPlus', value: e.target.value }) }}
                 onClick={e => e.stopPropagation()}
               >
-                <option value="">(Neutre)</option>
+                <option value="">(+)</option>
                 {NATURE_STATS.map(s => <option key={s} value={s}>{NATURE_STAT_LABELS[s]} +10%</option>)}
               </select>
+            </div>
+            <div className="poke-controls-spinners">
+              {(['sp','at','sa'] as const).map(key => (
+                <div key={key} className="def-spinner">
+                  <span className="def-spinner-label">{{ sp:'SPE', at:'ATK', sa:'SpA' }[key]}</span>
+                  <button className="def-sp-btn" onClick={e => stepAdvStat(key, 1, e)}>▲</button>
+                  <span
+                    className="def-sp-val"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={e => commitAdvStat(key, e.currentTarget, e)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
+                    onClick={e => e.stopPropagation()}
+                  >{spMap[key]}</span>
+                  <button className="def-sp-btn" onClick={e => stepAdvStat(key, -1, e)}>▼</button>
+                </div>
+              ))}
               <select
                 className={'adv-nat-sel' + (row.advNatMinus ? ' dropped' : '')}
                 value={row.advNatMinus || ''}
                 onChange={e => { e.stopPropagation(); dispatch({ type: 'SET_ADV_NATURE', pokeName: row.name, field: 'natMinus', value: e.target.value }) }}
                 onClick={e => e.stopPropagation()}
               >
-                <option value="">(Neutre)</option>
+                <option value="">(-)</option>
                 {NATURE_STATS.map(s => <option key={s} value={s}>{NATURE_STAT_LABELS[s]} -10%</option>)}
               </select>
             </div>
@@ -168,7 +145,6 @@ export default function DamageRow({ row }: Props) {
           </div>
         </td>
       </tr>
-
     </>
   )
 }

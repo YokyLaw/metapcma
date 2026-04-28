@@ -5,6 +5,7 @@ import { useAppState } from '../../context/AppContext'
 import { spriteUrl, itemSpriteUrl } from '../../calc/teamHelpers'
 import { MEGA_MAP } from '../../data/megaMap'
 import PokemonCard from './PokemonCard'
+import FieldBar from '../FieldBar'
 
 const MEGA_STONES = new Set(
   Object.values(MEGA_MAP).flatMap(formes => Object.values(formes))
@@ -17,9 +18,6 @@ export default function TeamPanel() {
 
   return (
     <div className="team-panel">
-      <div className="team-card-area">
-        <PokemonCard slotIndex={activeSlot} />
-      </div>
       <div className="team-slot-bar">
         {team.map((slot, i) => {
           const hasItem = slot.item && slot.item !== '(No Item)'
@@ -53,6 +51,10 @@ export default function TeamPanel() {
           )
         })}
       </div>
+      <div className="team-card-area">
+        <PokemonCard slotIndex={activeSlot} />
+      </div>
+      <FieldBar />
     </div>
   )
 }
