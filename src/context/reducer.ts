@@ -17,6 +17,9 @@ function makeSlot(id: number): TeamSlot {
     moves:  ['','','',''],
     ccMoves: null,
     ccItems: null,
+    ccAbilities: null,
+    preMegaAbility: '',
+    preMegaItem: '',
   }
 }
 
@@ -57,7 +60,7 @@ export type Action =
   | { type: 'UPDATE_BOOST'; slot: number; stat: keyof BoostMap; value: number }
   | { type: 'UPDATE_SP'; slot: number; stat: keyof StatMap; value: number }
   | { type: 'SELECT_MEGA'; slot: number; megaForme: string; stone: string }
-  | { type: 'SET_CC_DATA'; slot: number; pokemon: string; ccMoves: unknown[] | null; ccItems: unknown[] | null }  // eslint-disable-line @typescript-eslint/no-explicit-any
+  | { type: 'SET_CC_DATA'; slot: number; pokemon: string; ccMoves: unknown[] | null; ccItems: unknown[] | null; ccAbilities: unknown[] | null }
   | { type: 'SET_WEATHER'; weather: Weather }
   | { type: 'SET_TERRAIN'; terrain: Terrain }
   | { type: 'SET_ADV_STAT'; pokeName: string; statKey: 'sp_hp' | 'sp_df' | 'sp_sd'; value: number }
@@ -90,8 +93,11 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.natPlus   = ''
         slot.natMinus  = ''
         slot.megaForme = ''
-        slot.ccMoves   = null
-        slot.ccItems   = null
+        slot.ccMoves        = null
+        slot.ccItems        = null
+        slot.ccAbilities    = null
+        slot.preMegaAbility = ''
+        slot.preMegaItem    = ''
         slot.moves     = ['','','','']
         slot.item      = '(No Item)'
       }
@@ -134,18 +140,17 @@ export function appReducer(state: AppState, action: Action): AppState {
       slot.megaForme = action.megaForme
 
       if (action.megaForme && action.stone) {
+        slot.preMegaAbility = slot.ability
+        slot.preMegaItem    = slot.item
         slot.item = action.stone
         const megaAbilities = getAbilitiesFor(action.megaForme)
         const megaData = POKE_DATA[action.megaForme]
         slot.ability = megaAbilities ? megaAbilities[0] : (megaData ? (megaData.ab as string) : slot.ability)
       } else {
-        const baseAbilities = getAbilitiesFor(slot.pokemon)
-        const baseData = POKE_DATA[slot.pokemon]
-        slot.ability = baseAbilities ? baseAbilities[0] : (baseData ? (baseData.ab as string) : '')
-        const megaOptions = MEGA_MAP[slot.pokemon]
-        if (megaOptions && Object.values(megaOptions).includes(slot.item)) {
-          slot.item = '(No Item)'
-        }
+        slot.ability = slot.preMegaAbility || slot.ability
+        slot.item    = slot.preMegaItem    || slot.item
+        slot.preMegaAbility = ''
+        slot.preMegaItem    = ''
       }
 
       team[action.slot] = slot
@@ -155,11 +160,20 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'SET_CC_DATA': {
       const team = [...state.team]
       if (team[action.slot].pokemon === action.pokemon) {
-        team[action.slot] = {
-          ...team[action.slot],
-          ccMoves: action.ccMoves as string[] | null,
-          ccItems: action.ccItems as string[] | null,
+        const slot = { ...team[action.slot] }
+        slot.ccMoves     = action.ccMoves as string[] | null
+        slot.ccItems     = action.ccItems as string[] | null
+        slot.ccAbilities = action.ccAbilities as string[] | null
+
+        if (action.ccAbilities && action.ccAbilities.length > 0) {
+          const defaultAbility = (getAbilitiesFor(action.pokemon) ?? [])[0] ?? ''
+          if (slot.ability === defaultAbility || slot.ability === '') {
+            const top = (action.ccAbilities[0] as { ability?: { name?: string } }).ability?.name
+            if (top) slot.ability = top
+          }
         }
+
+        team[action.slot] = slot
       }
       return { ...state, team }
     }

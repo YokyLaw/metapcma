@@ -43,6 +43,9 @@ export interface TeamSlot {
   moves: [string, string, string, string]
   ccMoves: string[] | null
   ccItems: string[] | null
+  ccAbilities: string[] | null
+  preMegaAbility: string
+  preMegaItem: string
 }
 
 export interface AdvOverride {

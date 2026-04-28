@@ -1,7 +1,7 @@
 import { useAppState } from '../../context/AppContext'
 import { USAGE_MAP } from '../../data/usageData'
 import { NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
-import { getAbilitiesFor } from '../../calc/teamHelpers'
+import { getAbilitiesFor, spriteUrl } from '../../calc/teamHelpers'
 import type { TableRow, MoveSlotResult } from '../../types'
 
 interface Props {
@@ -69,6 +69,7 @@ export default function DamageRow({ row }: Props) {
         <td>
           <div className="poke-name-cell">
             <div className="poke-name-info">
+              <img className="adv-sprite" src={spriteUrl(row.name)} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
               <strong>{row.name}</strong>
               {isOHKO && <span className="ko-badge ohko">OHKO</span>}
               {!isOHKO && isKO && <span className="ko-badge ko">KO?</span>}

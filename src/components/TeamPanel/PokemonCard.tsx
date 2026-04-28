@@ -5,14 +5,36 @@ import { POKE_DATA } from '../../data/pokeData'
 import { ITEM_DATA } from '../../data/itemData'
 import { ABILITY_DATA } from '../../data/abilityData'
 import { STAT_KEYS, STAT_LABELS, NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
-import { getEffectivePokeName, getAbilitiesFor } from '../../calc/teamHelpers'
+import { USAGE_MAP } from '../../data/usageData'
+import { getEffectivePokeName, getAbilitiesFor, spriteUrl } from '../../calc/teamHelpers'
 import type { CCMoveEntry } from '../../calc/teamHelpers'
+import type { CCAbilityEntry } from '../../hooks/useCC'
 import { getStats } from '../../calc/statCalc'
 import MegaBar from './MegaBar'
 import MoveSlot from './MoveSlot'
+import SearchSelect from './SearchSelect'
+import type { SearchOption } from './SearchSelect'
 import StatItem from './StatItem'
 
-const POKE_NAMES = Object.keys(POKE_DATA).sort()
+const POKE_NAMES = Object.keys(POKE_DATA).filter(n => !n.startsWith('Mega ')).sort((a, b) => {
+  const ua = USAGE_MAP[a] ?? -1
+  const ub = USAGE_MAP[b] ?? -1
+  if (ub !== ua) return ub - ua
+  return a.localeCompare(b)
+})
+
+const POKE_OPTIONS: SearchOption[] = POKE_NAMES.map(n => {
+  const u = USAGE_MAP[n]
+  return { value: n, label: n, meta: u != null ? `${Math.floor(u * 10) / 10}%` : undefined, image: spriteUrl(n) }
+})
+
+const NAT_PLUS_OPTIONS: SearchOption[] = NATURE_STATS.map(s => ({
+  value: s, label: `${NATURE_STAT_LABELS[s]} +10%`,
+}))
+
+const NAT_MINUS_OPTIONS: SearchOption[] = NATURE_STATS.map(s => ({
+  value: s, label: `${NATURE_STAT_LABELS[s]} -10%`,
+}))
 
 interface Props {
   slotIndex: number
@@ -30,9 +52,7 @@ export default function PokemonCard({ slotIndex }: Props) {
   const t2 = pokeData?.t2 || ''
 
   useEffect(() => {
-    if (slot.pokemon) {
-      fetchCC(slotIndex, slot.pokemon)
-    }
+    if (slot.pokemon) fetchCC(slotIndex, slot.pokemon)
   }, [slot.pokemon])
 
   function handleCardClick(e: React.MouseEvent) {
@@ -53,12 +73,28 @@ export default function PokemonCard({ slotIndex }: Props) {
   // Item options
   const ccItemsData = slot.ccItems as Array<{ item: { name: string }; percent: number }> | null
   const ccItemNames = ccItemsData ? ccItemsData.map(it => it.item.name) : null
-  const itemOptions = ccItemNames
+  const ccItemsMap = ccItemsData
+    ? Object.fromEntries(ccItemsData.map(i => [i.item.name, i.percent]))
+    : {}
+  const itemList = ccItemNames
     ? ['(No Item)', ...ccItemNames, ...ITEM_DATA.filter(it => !ccItemNames.includes(it))]
     : ['(No Item)', ...ITEM_DATA]
+  const itemOptions: SearchOption[] = itemList.map(it => ({
+    value: it,
+    label: it,
+    meta: ccItemsMap[it] != null ? `${Math.floor(ccItemsMap[it] * 10) / 10}%` : undefined,
+  }))
 
-  // Abilities
-  const abilities = getAbilitiesFor(effectiveName) || ABILITY_DATA
+  // Ability options — sorted by CC usage if available
+  const ccAbilityData = slot.ccAbilities as CCAbilityEntry[] | null
+  const baseAbilities = getAbilitiesFor(effectiveName) || ABILITY_DATA
+  const abilityOptions: SearchOption[] = ccAbilityData && ccAbilityData.length > 0
+    ? ccAbilityData.map(e => ({
+        value: e.ability.name,
+        label: e.ability.name,
+        meta: e.percent > 0 ? `${Math.floor(e.percent * 10) / 10}%` : undefined,
+      }))
+    : baseAbilities.map(a => ({ value: a, label: a }))
 
   // Computed totals
   const computedStats = pokeData
@@ -66,7 +102,6 @@ export default function PokemonCard({ slotIndex }: Props) {
     : null
 
   function getTotal(key: string): number {
-    if (!pokeData) return 0
     if (!computedStats) return 0
     return (computedStats as Record<string, number>)[key] || 0
   }
@@ -78,15 +113,19 @@ export default function PokemonCard({ slotIndex }: Props) {
     >
       <div className="card-header">
         <span className="slot-num">{slotIndex + 1}</span>
+        {(slot.megaForme || slot.pokemon) && (
+          <img
+            className="card-sprite"
+            src={spriteUrl(slot.megaForme || slot.pokemon)}
+            alt=""
+            onError={e => { e.currentTarget.style.display = 'none' }}
+          />
+        )}
         <span className="poke-name-display">
           {slot.pokemon || <span className="poke-placeholder">— Vide —</span>}
         </span>
-        {t1 && (
-          <span className="type-badge" style={{ background: `var(--${t1})` }}>{t1}</span>
-        )}
-        {t2 && (
-          <span className="type-badge" style={{ background: `var(--${t2})` }}>{t2}</span>
-        )}
+        {t1 && <span className="type-badge" style={{ background: `var(--${t1})` }}>{t1}</span>}
+        {t2 && <span className="type-badge" style={{ background: `var(--${t2})` }}>{t2}</span>}
       </div>
 
       {slot.pokemon && (
@@ -95,54 +134,42 @@ export default function PokemonCard({ slotIndex }: Props) {
 
       <div className="card-selects">
         <div className="card-selects-full">
-          <select
+          <SearchSelect
             value={slot.pokemon}
-            onChange={e => { e.stopPropagation(); updateField('pokemon', e.target.value) }}
-            onClick={e => e.stopPropagation()}
-          >
-            <option value="">— Choisir Pokémon —</option>
-            {POKE_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
+            options={POKE_OPTIONS}
+            onChange={name => updateField('pokemon', name)}
+            placeholder="— Choisir Pokémon —"
+            maxUnfiltered={60}
+          />
         </div>
 
-        <select
+        <SearchSelect
           value={slot.ability}
-          onChange={e => { e.stopPropagation(); updateField('ability', e.target.value) }}
-          onClick={e => e.stopPropagation()}
-        >
-          <option value="">— Talent —</option>
-          {abilities.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
+          options={abilityOptions}
+          onChange={v => updateField('ability', v)}
+          placeholder="— Talent —"
+        />
 
-        <select
+        <SearchSelect
           value={slot.item}
-          onChange={e => { e.stopPropagation(); updateField('item', e.target.value) }}
-          onClick={e => e.stopPropagation()}
-        >
-          {itemOptions.map(it => {
-            const ccItemsMap = ccItemsData ? Object.fromEntries(ccItemsData.map(i => [i.item.name, i.percent])) : {}
-            const pct = ccItemsMap[it] != null ? ` (${Math.floor(ccItemsMap[it] * 10) / 10}%)` : ''
-            return <option key={it} value={it}>{it}{pct}</option>
-          })}
-        </select>
+          options={itemOptions}
+          onChange={v => updateField('item', v)}
+          disabled={!!slot.megaForme}
+        />
 
-        <select
+        <SearchSelect
           value={slot.natPlus}
-          onChange={e => { e.stopPropagation(); updateField('natPlus', e.target.value) }}
-          onClick={e => e.stopPropagation()}
-        >
-          <option value="">(Neutre)</option>
-          {NATURE_STATS.map(s => <option key={s} value={s}>{NATURE_STAT_LABELS[s]} +10%</option>)}
-        </select>
+          options={NAT_PLUS_OPTIONS}
+          onChange={v => updateField('natPlus', v)}
+          placeholder="(Neutre)"
+        />
 
-        <select
+        <SearchSelect
           value={slot.natMinus}
-          onChange={e => { e.stopPropagation(); updateField('natMinus', e.target.value) }}
-          onClick={e => e.stopPropagation()}
-        >
-          <option value="">(Neutre)</option>
-          {NATURE_STATS.map(s => <option key={s} value={s}>{NATURE_STAT_LABELS[s]} -10%</option>)}
-        </select>
+          options={NAT_MINUS_OPTIONS}
+          onChange={v => updateField('natMinus', v)}
+          placeholder="(Neutre)"
+        />
       </div>
 
       <div className="stats-grid">

@@ -19,7 +19,7 @@ export default function MegaBar({ slotIndex, pokemon, megaForme }: Props) {
 
   return (
     <div className="mega-bar">
-      <span className="mega-label">Forme.s</span>
+      <span className="mega-label">Formes</span>
       <button
         className={'mega-btn' + (!megaForme ? ' active' : '')}
         onClick={e => handleClick('', '', e)}
