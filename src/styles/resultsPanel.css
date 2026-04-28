@@ -116,7 +116,7 @@
 
 .poke-name-cell { display: flex; align-items: center; gap: 6px; }
 .poke-name-info { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px; }
-.adv-sprite { height: 24px; width: auto; image-rendering: pixelated; flex-shrink: 0; }
+.adv-sprite { height: 36px; width: 36px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
 .poke-type-dots { display: inline-flex; align-items: center; gap: 3px; margin: 0 4px; vertical-align: middle; }
 
 .dmg-cell { vertical-align: middle; }

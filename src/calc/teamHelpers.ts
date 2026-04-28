@@ -26,6 +26,11 @@ export function getBaseNameForCC(pokeName: string): string {
 
 export interface CCMoveEntry { move: { name: string }; percent: number }
 
+export function itemSpriteUrl(name: string): string {
+  const slug = name.toLowerCase().replace(/'/g, '').replace(/ /g, '-')
+  return `https://www.coupcritique.fr/images/items/sprites/${slug}.png`
+}
+
 export function spriteUrl(name: string): string {
   const slug = name.toLowerCase()
   const megaMatch = slug.match(/^mega (.+)$/)

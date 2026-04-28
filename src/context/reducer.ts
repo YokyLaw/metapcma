@@ -104,6 +104,14 @@ export function appReducer(state: AppState, action: Action): AppState {
       if (action.field === 'natPlus'  && action.value && action.value === slot.natMinus) slot.natMinus = ''
       if (action.field === 'natMinus' && action.value && action.value === slot.natPlus)  slot.natPlus  = ''
 
+      if (action.field === 'item' && action.value && action.value !== '(No Item)') {
+        for (let i = 0; i < team.length; i++) {
+          if (i !== action.slot && team[i].item === action.value) {
+            team[i] = { ...team[i], item: '(No Item)' }
+          }
+        }
+      }
+
       team[action.slot] = slot
       return { ...state, team }
     }
@@ -143,6 +151,11 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.preMegaAbility = slot.ability
         slot.preMegaItem    = slot.item
         slot.item = action.stone
+        for (let i = 0; i < team.length; i++) {
+          if (i !== action.slot && team[i].item === action.stone) {
+            team[i] = { ...team[i], item: '(No Item)' }
+          }
+        }
         const megaAbilities = getAbilitiesFor(action.megaForme)
         const megaData = POKE_DATA[action.megaForme]
         slot.ability = megaAbilities ? megaAbilities[0] : (megaData ? (megaData.ab as string) : slot.ability)

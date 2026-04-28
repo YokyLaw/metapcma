@@ -6,7 +6,7 @@ import { ITEM_DATA } from '../../data/itemData'
 import { ABILITY_DATA } from '../../data/abilityData'
 import { STAT_KEYS, STAT_LABELS, NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
 import { USAGE_MAP } from '../../data/usageData'
-import { getEffectivePokeName, getAbilitiesFor, spriteUrl } from '../../calc/teamHelpers'
+import { getEffectivePokeName, getAbilitiesFor, spriteUrl, itemSpriteUrl } from '../../calc/teamHelpers'
 import type { CCMoveEntry } from '../../calc/teamHelpers'
 import type { CCAbilityEntry } from '../../hooks/useCC'
 import { getStats } from '../../calc/statCalc'
@@ -83,6 +83,7 @@ export default function PokemonCard({ slotIndex }: Props) {
     value: it,
     label: it,
     meta: ccItemsMap[it] != null ? `${Math.floor(ccItemsMap[it] * 10) / 10}%` : undefined,
+    image: it !== '(No Item)' ? itemSpriteUrl(it) : undefined,
   }))
 
   // Ability options — sorted by CC usage if available
@@ -189,15 +190,19 @@ export default function PokemonCard({ slotIndex }: Props) {
 
       <div className="moves-section">
         <div className="moves-label">Attaques</div>
-        {slot.moves.map((mv, mi) => (
-          <MoveSlot
-            key={mi}
-            slotIndex={slotIndex}
-            moveIdx={mi}
-            value={mv}
-            moves={moves}
-          />
-        ))}
+        {slot.moves.map((mv, mi) => {
+          const otherSelected = new Set(slot.moves.filter((m, i) => i !== mi && m))
+          const availableMoves = moves.filter(m => !otherSelected.has(m.move.name))
+          return (
+            <MoveSlot
+              key={mi}
+              slotIndex={slotIndex}
+              moveIdx={mi}
+              value={mv}
+              moves={availableMoves}
+            />
+          )
+        })}
       </div>
     </div>
   )
