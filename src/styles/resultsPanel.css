@@ -1,5 +1,6 @@
 .results-panel {
   grid-column: 2;
+  grid-row: 1;
   background: var(--bg);
   overflow-y: auto;
   padding: 16px 20px;
@@ -116,7 +117,7 @@
 .pct-text.ohko { color: var(--success); }
 
 .poke-name-cell { display: flex; align-items: center; gap: 6px; }
-.poke-name-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; overflow: hidden; }
+.poke-name-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; }
 .poke-name-info > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
 .adv-sprite { height: 36px; width: 36px; object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
 .poke-type-dots { display: inline-flex; align-items: center; gap: 3px; margin: 0 4px; vertical-align: middle; }
@@ -175,12 +176,50 @@
   vertical-align: middle;
 }
 .damage-table tr:hover td { background: #141720; }
-.damage-table td:first-child { vertical-align: top; padding-bottom: 6px; }
+.damage-table tr.ohko-row td   { background: #0f1e16; }
+.damage-table tr.ko-row td     { background: #1e1810; }
+.damage-table tr.ko-low-row td { background: #1e1210; }
+.damage-table tr.ohko-row:hover td   { background: #13221a; }
+.damage-table tr.ko-row:hover td     { background: #221c13; }
+.damage-table tr.ko-low-row:hover td { background: #221613; }
+.damage-table td:first-child { vertical-align: top; padding-bottom: 6px; min-width: 340px; }
+
+.adv-block {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.adv-block-left {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: space-between;
+}
+.adv-block-left .poke-controls-spinners { display: flex; align-items: center; gap: 5px; }
+.adv-block-left .def-spinner-label { min-width: 18px; font-size: 8px; }
+
+.adv-block-right {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: space-between;
+  width: 80px;
+  flex-shrink: 0;
+}
+.adv-block-right .adv-nat-sel { width: 100%; max-width: none; min-width: 0; }
+
+.adv-sel-cell { width: 100%; }
+.adv-sel-cell .search-select-trigger,
+.adv-sel-cell .search-select-input {
+  font-size: 10px;
+  padding: 2px 5px;
+  min-height: 20px;
+  background: #0e1016;
+}
 
 .poke-controls { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; }
 .poke-controls-spinners { display: flex; align-items: center; gap: 6px; }
-.poke-controls-natures  { display: flex; align-items: center; gap: 6px; }
-.poke-controls-natures .adv-nat-sel { flex: 1; min-width: 0; max-width: none; font-size: 9px; }
 .poke-controls .def-spinner-label { min-width: 18px; font-size: 8px; }
 
 /* Inline defender stat spinners */
@@ -251,6 +290,57 @@
 .adv-nat-sel.boosted { border-color: var(--success); color: var(--success); }
 .adv-nat-sel.dropped { border-color: var(--danger);  color: var(--danger); }
 .adv-nat-sel option { background: #141820; color: var(--text); }
+
+/* Adv moves column */
+.adv-moves-cell {
+  vertical-align: middle;
+  min-width: 150px;
+  padding: 5px 10px;
+}
+.adv-move-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.adv-move-name {
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adv-move-pct {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.adv-moves-empty { color: var(--muted); font-size: 12px; }
+.adv-move-row.ko     { color: #e07820; }
+.adv-move-row.ko-low { color: var(--danger); }
+.adv-move-row.ohko   { color: var(--success); }
+
+/* Speed tier column */
+.speed-cell {
+  vertical-align: middle;
+  white-space: nowrap;
+  padding: 5px 10px;
+}
+.speed-compare {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+}
+.speed-val { font-weight: 700; }
+.spd-arrow { font-size: 9px; color: var(--muted); }
+.spd-win   { color: var(--success); }
+.spd-lose  { color: var(--danger); }
+.spd-tie   { color: var(--muted); }
 
 .ko-badge {
   font-family: 'IBM Plex Mono', monospace;

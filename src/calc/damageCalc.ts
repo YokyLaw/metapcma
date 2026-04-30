@@ -65,7 +65,7 @@ interface CalcResult {
   defHP: number
 }
 
-interface CalcCtx {
+export interface CalcCtx {
   defHP: number; defDfOv: number; defSdOv: number
   defenderData: PokeEntry
   atkPokeData: PokeEntry
@@ -77,7 +77,7 @@ interface CalcCtx {
   weather: string; terrain: string
 }
 
-function buildCalcCtx(
+export function buildCalcCtx(
   attacker: TeamSlot,
   atkStats: StatMap,
   defenderData: PokeEntry,
@@ -116,7 +116,7 @@ function buildCalcCtx(
   }
 }
 
-function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | null {
+export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | null {
   const {
     defHP, defDfOv, defSdOv, defenderData, atkPokeData,
     atkItem, atkAbility, defAbility, defIsGrounded,

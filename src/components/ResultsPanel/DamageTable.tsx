@@ -56,8 +56,10 @@ export default function DamageTable() {
       <table className="damage-table">
         <thead>
           <tr>
-            <th className={thClass('name')} onClick={() => handleSort('name')}>POKÉMON</th>
-            <th className={thClass('move')} onClick={() => handleSort('move' as SortKey)}>DÉGATS</th>
+            <th className={thClass('name')} onClick={() => handleSort('name')}>OPPONENT</th>
+            <th className={thClass('move')} onClick={() => handleSort('move' as SortKey)}>OFFENSE</th>
+            <th>DEFENSE</th>
+            <th>SPEEDTIER</th>
           </tr>
         </thead>
         <tbody>

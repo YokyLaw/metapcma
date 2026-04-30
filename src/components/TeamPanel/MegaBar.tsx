@@ -10,7 +10,7 @@ interface Props {
 export default function MegaBar({ slotIndex, pokemon, megaForme }: Props) {
   const { dispatch } = useAppState()
   const megaOptions = getMegaOptions(pokemon)
-  if (!megaOptions) return null
+  if (!megaOptions) return <div className="mega-bar" aria-hidden />
 
   function handleClick(forme: string, stone: string, e: React.MouseEvent) {
     e.stopPropagation()

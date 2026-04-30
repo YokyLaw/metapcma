@@ -1,26 +1,65 @@
 .app {
   display: grid;
-  grid-template-columns: 380px 1fr;
-  grid-template-rows: 1fr;
+  grid-template-columns: 76px 1fr;
+  grid-template-rows: 1fr auto;
   height: calc(100vh - 58px);
   gap: 0;
 }
 
+/* Calc left sidebar */
+.calc-sidebar {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.calc-slot-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  padding: 4px;
+  position: relative;
+}
+.calc-slot-btn:last-child { border-bottom: none; }
+.calc-slot-btn:hover { background: var(--card); }
+.calc-slot-btn.active {
+  background: var(--slot-active);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.calc-slot-btn img:not(.slot-stone-overlay) {
+  height: 44px;
+  width: auto;
+  image-rendering: pixelated;
+}
+
+/* FieldBar — full-width horizontal bar at bottom */
 .field-bar {
+  grid-column: 1 / -1;
+  grid-row: 2;
   flex-shrink: 0;
   background: var(--panel);
   border-top: 1px solid var(--border);
-  padding: 6px 10px;
+  padding: 6px 16px;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
 }
 
 .field-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
 }
 
 .field-label {
@@ -29,14 +68,13 @@
   color: var(--muted);
   letter-spacing: 1px;
   text-transform: uppercase;
-  min-width: 44px;
+  white-space: nowrap;
 }
 
 .field-group {
   display: flex;
   align-items: center;
   gap: 3px;
-  flex-wrap: wrap;
 }
 
 .field-btn {

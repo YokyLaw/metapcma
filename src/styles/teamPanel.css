@@ -364,8 +364,11 @@
 .search-select-trigger.empty .search-select-trigger-label { color: var(--muted); }
 .search-select-trigger.locked {
   cursor: default;
-  opacity: 0.6;
+  opacity: 0.45;
   border-style: dashed;
+  border-color: var(--border);
+  background: var(--bg);
+  pointer-events: none;
 }
 .search-select-trigger-label {
   flex: 1;

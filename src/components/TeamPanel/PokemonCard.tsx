@@ -166,6 +166,7 @@ export default function PokemonCard({ slotIndex }: Props) {
           options={abilityOptions}
           onChange={v => updateField('ability', v)}
           placeholder="— Talent —"
+          disabled={!!slot.megaForme}
         />
 
         <SearchSelect
