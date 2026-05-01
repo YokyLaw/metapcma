@@ -104,7 +104,6 @@ export default function DamageRow({ row }: Props) {
 
   const isOHKO = row.isOHKO
   const isKO   = row.isKO
-  const rowBg  = isOHKO ? 'ohko-row' : row.minPct < 50 ? 'ko-low-row' : isKO ? 'ko-row' : ''
 
   const usage = USAGE_MAP[row.name]
 
@@ -155,7 +154,9 @@ export default function DamageRow({ row }: Props) {
     boosts: { at: 0, df: 0, sa: 0, sd: 0, sp: 0 },
     moves: ['', '', '', ''],
     ccMoves: null, ccItems: null, ccAbilities: null,
+    ccNature: null, ccSps: null,
     preMegaAbility: '', preMegaItem: '',
+    useDefaultSet: false, preDefaultSet: null,
   }
   const atkAsDefOverride = atkSlot ? {
     sp_hp: atkSlot.sps.hp, sp_df: atkSlot.sps.df, sp_sd: atkSlot.sps.sd,
@@ -171,7 +172,7 @@ export default function DamageRow({ row }: Props) {
 
   return (
     <>
-      <tr className={'mainrow ' + rowBg}>
+      <tr className="mainrow">
         <td>
           <div className="adv-block">
             <div className="adv-block-left">

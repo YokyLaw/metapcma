@@ -36,8 +36,12 @@
   background: var(--slot-active);
   box-shadow: inset 3px 0 0 var(--accent);
 }
+.slot-sprite-wrap {
+  position: relative;
+  display: inline-flex;
+}
 .calc-slot-btn img:not(.slot-stone-overlay) {
-  height: 44px;
+  height: 64px;
   width: auto;
   image-rendering: pixelated;
 }

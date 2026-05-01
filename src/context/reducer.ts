@@ -1,4 +1,4 @@
-import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey } from '../types'
+import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey, DefaultSetSnapshot } from '../types'
 import { POKE_DATA } from '../data/pokeData'
 import { getAbilitiesFor } from '../calc/teamHelpers'
 import { MEGA_MAP } from '../data/megaMap'
@@ -18,8 +18,12 @@ function makeSlot(id: number): TeamSlot {
     ccMoves: null,
     ccItems: null,
     ccAbilities: null,
+    ccNature: null,
+    ccSps: null,
     preMegaAbility: '',
     preMegaItem: '',
+    useDefaultSet: false,
+    preDefaultSet: null,
   }
 }
 
@@ -62,7 +66,8 @@ export type Action =
   | { type: 'UPDATE_BOOST'; slot: number; stat: keyof BoostMap; value: number }
   | { type: 'UPDATE_SP'; slot: number; stat: keyof StatMap; value: number }
   | { type: 'SELECT_MEGA'; slot: number; megaForme: string; stone: string }
-  | { type: 'SET_CC_DATA'; slot: number; pokemon: string; ccMoves: unknown[] | null; ccItems: unknown[] | null; ccAbilities: unknown[] | null }
+  | { type: 'SET_CC_DATA'; slot: number; pokemon: string; ccMoves: unknown[] | null; ccItems: unknown[] | null; ccAbilities: unknown[] | null; ccNature?: { natPlus: string; natMinus: string } | null; ccSps?: StatMap | null }
+  | { type: 'TOGGLE_DEFAULT_SET'; slot: number }
   | { type: 'SET_WEATHER'; weather: Weather }
   | { type: 'SET_TERRAIN'; terrain: Terrain }
   | { type: 'SET_TAILWIND'; value: boolean }
@@ -99,13 +104,22 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.ccMoves        = null
         slot.ccItems        = null
         slot.ccAbilities    = null
+        slot.ccNature       = null
+        slot.ccSps          = null
         slot.preMegaAbility = ''
         slot.preMegaItem    = ''
+        slot.useDefaultSet  = false
+        slot.preDefaultSet  = null
         slot.moves     = ['','','','']
         slot.item      = '(No Item)'
       }
       if (action.field === 'natPlus'  && action.value && action.value === slot.natMinus) slot.natMinus = ''
       if (action.field === 'natMinus' && action.value && action.value === slot.natPlus)  slot.natPlus  = ''
+
+      if (slot.useDefaultSet && ['ability','item','natPlus','natMinus'].includes(action.field)) {
+        slot.useDefaultSet = false
+        slot.preDefaultSet = null
+      }
 
       if (action.field === 'item' && action.value && action.value !== '(No Item)') {
         for (let i = 0; i < team.length; i++) {
@@ -121,9 +135,13 @@ export function appReducer(state: AppState, action: Action): AppState {
 
     case 'UPDATE_MOVE': {
       const team = [...state.team]
-      const moves = [...team[action.slot].moves] as [string,string,string,string]
+      const slot = team[action.slot]
+      const moves = [...slot.moves] as [string,string,string,string]
       moves[action.moveIdx] = action.value
-      team[action.slot] = { ...team[action.slot], moves }
+      team[action.slot] = {
+        ...slot, moves,
+        ...(slot.useDefaultSet ? { useDefaultSet: false, preDefaultSet: null } : {}),
+      }
       return { ...state, team }
     }
 
@@ -138,9 +156,11 @@ export function appReducer(state: AppState, action: Action): AppState {
 
     case 'UPDATE_SP': {
       const team = [...state.team]
+      const slot = team[action.slot]
       team[action.slot] = {
-        ...team[action.slot],
-        sps: { ...team[action.slot].sps, [action.stat]: action.value }
+        ...slot,
+        sps: { ...slot.sps, [action.stat]: action.value },
+        ...(slot.useDefaultSet ? { useDefaultSet: false, preDefaultSet: null } : {}),
       }
       return { ...state, team }
     }
@@ -167,6 +187,20 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.item    = slot.preMegaItem    || slot.item
         slot.preMegaAbility = ''
         slot.preMegaItem    = ''
+
+        if (slot.useDefaultSet) {
+          const topAbility = (slot.ccAbilities as Array<{ ability: { name: string } }> | null)?.[0]?.ability?.name
+          if (topAbility) slot.ability = topAbility
+          const topItem = (slot.ccItems as Array<{ item: { name: string } }> | null)?.[0]?.item?.name
+          if (topItem) {
+            slot.item = topItem
+            for (let i = 0; i < team.length; i++) {
+              if (i !== action.slot && team[i].item === topItem) {
+                team[i] = { ...team[i], item: '(No Item)' }
+              }
+            }
+          }
+        }
       }
 
       team[action.slot] = slot
@@ -181,6 +215,8 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.ccMoves     = action.ccMoves as string[] | null
         slot.ccItems     = action.ccItems as string[] | null
         slot.ccAbilities = action.ccAbilities as string[] | null
+        slot.ccNature    = action.ccNature ?? null
+        slot.ccSps       = action.ccSps ?? null
 
         if (wasFirstLoad && action.ccAbilities && action.ccAbilities.length > 0) {
           const defaultAbility = (getAbilitiesFor(action.pokemon) ?? [])[0] ?? ''
@@ -261,6 +297,73 @@ export function appReducer(state: AppState, action: Action): AppState {
 
     case 'SET_SHOW_LOW_USAGE':
       return { ...state, showLowUsage: action.value }
+
+    case 'TOGGLE_DEFAULT_SET': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+
+      if (!slot.useDefaultSet) {
+        const snapshot: DefaultSetSnapshot = {
+          ability: slot.megaForme ? (slot.preMegaAbility || slot.ability) : slot.ability,
+          item:    slot.megaForme ? (slot.preMegaItem    || slot.item)    : slot.item,
+          natPlus: slot.natPlus,
+          natMinus: slot.natMinus,
+          sps: { ...slot.sps },
+          moves: [...slot.moves] as [string, string, string, string],
+        }
+        slot.preDefaultSet = snapshot
+        slot.useDefaultSet = true
+
+        if (!slot.megaForme) {
+          const topAbility = (slot.ccAbilities as Array<{ ability: { name: string } }> | null)?.[0]?.ability?.name
+          if (topAbility) slot.ability = topAbility
+
+          const topItem = (slot.ccItems as Array<{ item: { name: string } }> | null)?.[0]?.item?.name
+          if (topItem) {
+            slot.item = topItem
+            for (let i = 0; i < team.length; i++) {
+              if (i !== action.slot && team[i].item === topItem) {
+                team[i] = { ...team[i], item: '(No Item)', useDefaultSet: false, preDefaultSet: null }
+              }
+            }
+          }
+        }
+
+        const ccMoves = slot.ccMoves as Array<{ move: { name: string } }> | null
+        if (ccMoves?.length) {
+          const top4 = ccMoves.slice(0, 4).map(m => m.move.name)
+          while (top4.length < 4) top4.push('')
+          slot.moves = top4 as [string, string, string, string]
+        }
+
+        if (slot.ccNature) {
+          slot.natPlus  = slot.ccNature.natPlus
+          slot.natMinus = slot.ccNature.natMinus
+        }
+        if (slot.ccSps) {
+          slot.sps = { ...slot.ccSps }
+        }
+      } else {
+        slot.useDefaultSet = false
+        if (slot.preDefaultSet) {
+          if (slot.megaForme) {
+            slot.preMegaAbility = slot.preDefaultSet.ability
+            slot.preMegaItem    = slot.preDefaultSet.item
+          } else {
+            slot.ability = slot.preDefaultSet.ability
+            slot.item    = slot.preDefaultSet.item
+          }
+          slot.natPlus  = slot.preDefaultSet.natPlus
+          slot.natMinus = slot.preDefaultSet.natMinus
+          slot.sps      = { ...slot.preDefaultSet.sps }
+          slot.moves    = [...slot.preDefaultSet.moves] as [string, string, string, string]
+          slot.preDefaultSet = null
+        }
+      }
+
+      team[action.slot] = slot
+      return { ...state, team }
+    }
 
     default:
       return state

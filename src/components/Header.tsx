@@ -10,10 +10,7 @@ interface Props {
 export default function Header({ activeTab, onTabChange }: Props) {
   return (
     <header>
-      <div>
-        <h1>Champions Calc</h1>
-        <div className="subtitle">VGC 2026 · Régulation MA · Stat Points System</div>
-      </div>
+      <h1>Champions Calc</h1>
       <nav className="tab-nav">
         <button
           className={'tab-btn' + (activeTab === 'team' ? ' active' : '')}

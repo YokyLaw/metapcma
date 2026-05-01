@@ -13,10 +13,11 @@ interface Props {
   isBoostable: boolean
   baseStatChange?: number
   baseStatDiff?: number
+  baseStat?: number
 }
 
 export default function StatItem({
-  slotIndex, statKey, statLabel, spValue, boostValue, computedTotal, isBoostable, baseStatChange = 0, baseStatDiff = 0
+  slotIndex, statKey, statLabel, spValue, boostValue, computedTotal, isBoostable, baseStatChange = 0, baseStatDiff = 0, baseStat
 }: Props) {
   const { dispatch } = useAppState()
   const spValRef = useRef<HTMLSpanElement>(null)
@@ -48,6 +49,7 @@ export default function StatItem({
   return (
     <div className="stat-item">
       <span className="stat-label">{statLabel}</span>
+      {baseStat !== undefined && <span className="base-stat-ref">{baseStat}</span>}
       <div className="sp-spinner">
         <button className="sp-btn" onClick={e => stepSP(1, e)}>▲</button>
         <div className="sp-val-wrap">

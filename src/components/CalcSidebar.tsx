@@ -24,7 +24,7 @@ export default function CalcSidebar() {
             onClick={() => dispatch({ type: 'SELECT_SLOT', slot: i })}
           >
             {slot.pokemon ? (
-              <>
+              <div className="slot-sprite-wrap">
                 <img
                   src={spriteUrl(slot.pokemon)}
                   alt={slot.pokemon}
@@ -38,7 +38,7 @@ export default function CalcSidebar() {
                     onError={e => { e.currentTarget.style.display = 'none' }}
                   />
                 )}
-              </>
+              </div>
             ) : (
               <span className="slot-btn-num">{i + 1}</span>
             )}

@@ -4,12 +4,14 @@ import { useFetchCCForSlot } from '../../hooks/useCC'
 import { POKE_DATA } from '../../data/pokeData'
 import { ITEM_DATA } from '../../data/itemData'
 import { ABILITY_DATA } from '../../data/abilityData'
-import { STAT_KEYS, STAT_LABELS, NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
+import { STAT_KEYS, STAT_LABELS, NATURE_STATS, NATURE_STAT_LABELS, STAT_BOOST_MULTS } from '../../data/constants'
 import { USAGE_MAP } from '../../data/usageData'
 import { getEffectivePokeName, getAbilitiesFor, spriteUrl, itemSpriteUrl } from '../../calc/teamHelpers'
 import type { CCMoveEntry } from '../../calc/teamHelpers'
 import type { CCAbilityEntry } from '../../hooks/useCC'
-import { getStats } from '../../calc/statCalc'
+import { getStats, getItemStatMult } from '../../calc/statCalc'
+import { getItemDesc } from '../../hooks/useItemDesc'
+import { getAbilityDesc } from '../../hooks/useAbilityDesc'
 import MegaBar from './MegaBar'
 import MoveSlot from './MoveSlot'
 import SearchSelect from './SearchSelect'
@@ -23,7 +25,7 @@ const POKE_NAMES = Object.keys(POKE_DATA).filter(n => !n.startsWith('Mega ')).so
   return a.localeCompare(b)
 })
 
-const POKE_OPTIONS: SearchOption[] = POKE_NAMES.map(n => {
+const BASE_POKE_OPTIONS: SearchOption[] = POKE_NAMES.map(n => {
   const u = USAGE_MAP[n]
   return { value: n, label: n, meta: u != null ? `${Math.floor(u * 10) / 10}%` : undefined, image: spriteUrl(n) }
 })
@@ -50,6 +52,13 @@ export default function PokemonCard({ slotIndex }: Props) {
   const pokeData = effectiveName ? POKE_DATA[effectiveName] : null
   const t1 = pokeData?.t1 || ''
   const t2 = pokeData?.t2 || ''
+
+  const usedPokemon = new Set(
+    state.team.filter((_, i) => i !== slotIndex).map(s => s.pokemon).filter(Boolean)
+  )
+  const pokeOptions = BASE_POKE_OPTIONS.map(o =>
+    usedPokemon.has(o.value) ? { ...o, disabled: true } : o
+  )
 
   useEffect(() => {
     if (slot.pokemon) fetchCC(slotIndex, slot.pokemon)
@@ -79,11 +88,16 @@ export default function PokemonCard({ slotIndex }: Props) {
   const itemList = ccItemNames
     ? ['(No Item)', ...ccItemNames, ...ITEM_DATA.filter(it => !ccItemNames.includes(it))]
     : ['(No Item)', ...ITEM_DATA]
+  const usedItems = new Set(
+    state.team.filter((_, i) => i !== slotIndex).map(s => s.item).filter(it => it && it !== '(No Item)')
+  )
   const itemOptions: SearchOption[] = itemList.map(it => ({
     value: it,
     label: it,
     meta: ccItemsMap[it] != null ? `${Math.floor(ccItemsMap[it] * 10) / 10}%` : undefined,
     image: it !== '(No Item)' ? itemSpriteUrl(it) : undefined,
+    disabled: it !== '(No Item)' && usedItems.has(it),
+    description: getItemDesc(it),
   }))
 
   // Ability options — sorted by CC usage if available
@@ -94,8 +108,9 @@ export default function PokemonCard({ slotIndex }: Props) {
         value: e.ability.name,
         label: e.ability.name,
         meta: e.percent > 0 ? `${Math.floor(e.percent * 10) / 10}%` : undefined,
+        description: getAbilityDesc(e.ability.name),
       }))
-    : baseAbilities.map(a => ({ value: a, label: a }))
+    : baseAbilities.map(a => ({ value: a, label: a, description: getAbilityDesc(a) }))
 
   // Computed totals
   const computedStats = pokeData
@@ -104,7 +119,13 @@ export default function PokemonCard({ slotIndex }: Props) {
 
   function getTotal(key: string): number {
     if (!computedStats) return 0
-    return (computedStats as Record<string, number>)[key] || 0
+    const base = (computedStats as Record<string, number>)[key] || 0
+    if (key === 'hp') return base
+    const boostVal = (slot.boosts as Record<string, number>)[key] || 0
+    const boostStr = boostVal > 0 ? '+' + boostVal : '' + boostVal
+    const boostMult = STAT_BOOST_MULTS[boostStr] ?? 1
+    const itemMult = getItemStatMult(slot.item || '', key)
+    return Math.floor(base * boostMult * itemMult)
   }
 
   const basePokeData = slot.pokemon ? POKE_DATA[slot.pokemon] : null
@@ -154,7 +175,7 @@ export default function PokemonCard({ slotIndex }: Props) {
         <div className="card-selects-full">
           <SearchSelect
             value={slot.pokemon}
-            options={POKE_OPTIONS}
+            options={pokeOptions}
             onChange={name => updateField('pokemon', name)}
             placeholder="— Choisir Pokémon —"
             maxUnfiltered={60}
@@ -167,6 +188,7 @@ export default function PokemonCard({ slotIndex }: Props) {
           onChange={v => updateField('ability', v)}
           placeholder="— Talent —"
           disabled={!!slot.megaForme}
+          className="search-select--fixed"
         />
 
         <SearchSelect
@@ -174,6 +196,7 @@ export default function PokemonCard({ slotIndex }: Props) {
           options={itemOptions}
           onChange={v => updateField('item', v)}
           disabled={!!slot.megaForme}
+          className="search-select--fixed"
         />
 
         <SearchSelect
@@ -204,6 +227,7 @@ export default function PokemonCard({ slotIndex }: Props) {
             isBoostable={key !== 'hp'}
             baseStatChange={getBaseStatChange(key)}
             baseStatDiff={getBaseStatDiff(key)}
+            baseStat={pokeData ? (pokeData.bs as Record<string, number>)[key] ?? undefined : undefined}
           />
         ))}
       </div>

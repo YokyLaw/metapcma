@@ -8,33 +8,49 @@ interface Props {
 }
 
 export default function MegaBar({ slotIndex, pokemon, megaForme }: Props) {
-  const { dispatch } = useAppState()
+  const { state, dispatch } = useAppState()
+  const slot = state.team[slotIndex]
   const megaOptions = getMegaOptions(pokemon)
-  if (!megaOptions) return <div className="mega-bar" aria-hidden />
+  const hasCCData = !!(slot.ccMoves || slot.ccItems || slot.ccAbilities)
 
-  function handleClick(forme: string, stone: string, e: React.MouseEvent) {
+  if (!megaOptions && !hasCCData) return null
+
+  function handleMegaClick(forme: string, stone: string, e: React.MouseEvent) {
     e.stopPropagation()
     dispatch({ type: 'SELECT_MEGA', slot: slotIndex, megaForme: forme, stone })
   }
 
   return (
     <div className="mega-bar">
-      <span className="mega-label">Formes</span>
-      <button
-        className={'mega-btn' + (!megaForme ? ' active' : '')}
-        onClick={e => handleClick('', '', e)}
-      >
-        Base
-      </button>
-      {Object.entries(megaOptions).map(([mf, stone]) => (
+      {megaOptions && (
+        <>
+          <span className="mega-label">Formes</span>
+          <button
+            className={'mega-btn' + (!megaForme ? ' active' : '')}
+            onClick={e => handleMegaClick('', '', e)}
+          >
+            Base
+          </button>
+          {Object.entries(megaOptions).map(([mf, stone]) => (
+            <button
+              key={mf}
+              className={'mega-btn' + (megaForme === mf ? ' active' : '')}
+              onClick={e => handleMegaClick(mf, stone, e)}
+            >
+              {mf}
+            </button>
+          ))}
+        </>
+      )}
+      {hasCCData && (
         <button
-          key={mf}
-          className={'mega-btn' + (megaForme === mf ? ' active' : '')}
-          onClick={e => handleClick(mf, stone, e)}
+          className={'mega-btn' + (slot.useDefaultSet ? ' active' : '')}
+          style={{ marginLeft: 'auto' }}
+          onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_DEFAULT_SET', slot: slotIndex }) }}
         >
-          {mf}
+          Auto
         </button>
-      ))}
+      )}
     </div>
   )
 }

@@ -55,14 +55,14 @@
   position: absolute;
   bottom: 2px;
   right: 2px;
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   image-rendering: pixelated;
 }
 .slot-stone-overlay.mega {
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
 }
 
 .pokemon-card {
@@ -147,6 +147,14 @@
   font-family: 'IBM Plex Mono', monospace;
   color: var(--muted);
   letter-spacing: 0.5px;
+}
+.base-stat-ref {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--muted);
+  font-weight: 600;
+  opacity: 0.6;
+  line-height: 1;
 }
 .sp-spinner {
   display: flex;
@@ -283,11 +291,31 @@
 }
 .move-slot {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
+.move-slot .search-select { flex: 1; min-width: 0; }
 .move-slot .search-select-input,
 .move-slot .search-select-trigger {
   padding-left: 16px;
   font-size: 11px;
+}
+.move-cat-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+  width: 52px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0d1017;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  opacity: 0.9;
 }
 .move-type-dot {
   position: absolute;
@@ -360,6 +388,11 @@
   gap: 4px;
   min-height: 24px;
 }
+.search-select--fixed .search-select-trigger,
+.search-select--fixed .search-select-input {
+  min-height: 26px;
+  height: 26px;
+}
 .search-select-trigger:hover:not(.locked) { border-color: #353d50; }
 .search-select-trigger.empty .search-select-trigger-label { color: var(--muted); }
 .search-select-trigger.locked {
@@ -405,6 +438,8 @@
 }
 .search-select-item:hover { background: #1e222e; }
 .search-select-item.active { color: var(--accent); }
+.search-select-item.disabled { opacity: 0.35; cursor: default; }
+.search-select-item.disabled:hover { background: transparent; }
 .search-select-meta {
   color: var(--accent);
   font-family: 'IBM Plex Mono', monospace;
@@ -416,4 +451,21 @@
   font-size: 11px;
   color: var(--muted);
   font-style: italic;
+}
+
+.search-select-desc-tooltip {
+  position: fixed;
+  background: #1a1e2a;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--text);
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 2000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  white-space: pre-wrap;
+  word-break: break-word;
 }

@@ -20,6 +20,14 @@ export function calcStat(base: number, sp: number, natureMods: [string, string],
   return Math.floor((Math.floor((base * 2 + 31) * 50 / 100) + 5 + sp) * natureBonus)
 }
 
+export function getItemStatMult(item: string, statKey: string): number {
+  if (item === 'Choice Scarf' && statKey === 'sp') return 1.5
+  if (item === 'Choice Band'  && statKey === 'at') return 1.5
+  if (item === 'Choice Specs' && statKey === 'sa') return 1.5
+  if (item === 'Assault Vest' && statKey === 'sd') return 1.5
+  return 1
+}
+
 export function getStats(
   pokeData: { bs: Record<string, number> },
   sps: StatMap,

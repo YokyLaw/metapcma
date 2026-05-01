@@ -30,6 +30,15 @@ export type BoostKey = 'at'|'df'|'sa'|'sd'|'sp'
 export type StatMap = Record<StatKey, number>
 export type BoostMap = Record<BoostKey, number>
 
+export interface DefaultSetSnapshot {
+  ability: string
+  item: string
+  natPlus: string
+  natMinus: string
+  sps: StatMap
+  moves: [string, string, string, string]
+}
+
 export interface TeamSlot {
   id: number
   pokemon: string
@@ -44,8 +53,12 @@ export interface TeamSlot {
   ccMoves: string[] | null
   ccItems: string[] | null
   ccAbilities: string[] | null
+  ccNature: { natPlus: string; natMinus: string } | null
+  ccSps: StatMap | null
   preMegaAbility: string
   preMegaItem: string
+  useDefaultSet: boolean
+  preDefaultSet: DefaultSetSnapshot | null
 }
 
 export interface AdvOverride {

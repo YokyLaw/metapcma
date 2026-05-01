@@ -176,18 +176,13 @@
   vertical-align: middle;
 }
 .damage-table tr:hover td { background: #141720; }
-.damage-table tr.ohko-row td   { background: #0f1e16; }
-.damage-table tr.ko-row td     { background: #1e1810; }
-.damage-table tr.ko-low-row td { background: #1e1210; }
-.damage-table tr.ohko-row:hover td   { background: #13221a; }
-.damage-table tr.ko-row:hover td     { background: #221c13; }
-.damage-table tr.ko-low-row:hover td { background: #221613; }
 .damage-table td:first-child { vertical-align: top; padding-bottom: 6px; min-width: 340px; }
 
 .adv-block {
   display: flex;
   gap: 10px;
   align-items: stretch;
+  width: fit-content;
 }
 .adv-block-left {
   min-width: 0;
