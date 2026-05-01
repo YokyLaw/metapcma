@@ -66,7 +66,7 @@ interface CalcResult {
 }
 
 export interface CalcCtx {
-  defHP: number; defDfOv: number; defSdOv: number
+  defHP: number; defDfOv: number; defSdOv: number; defAtOv: number
   defenderData: PokeEntry
   atkPokeData: PokeEntry
   atkItem: string; atkAbility: string; defAbility: string
@@ -92,9 +92,11 @@ export function buildCalcCtx(
   const spDf = overrideStats?.sp_df ?? 0
   const spSd = overrideStats?.sp_sd ?? 0
 
+  const spAt = overrideStats?.sp_at ?? 0
   const defHP   = calcHP(defenderData.bs.hp, spHP)
   const defDfOv = calcStat(defenderData.bs.df, spDf, defNatArr, 'df')
   const defSdOv = calcStat(defenderData.bs.sd, spSd, defNatArr, 'sd')
+  const defAtOv = calcStat(defenderData.bs.at, spAt, defNatArr, 'at')
 
   const atkPokeData = POKE_DATA[getEffectivePokeName(attacker)]
   if (!atkPokeData) return null
@@ -109,7 +111,7 @@ export function buildCalcCtx(
   const atkW = atkPokeData.w || 0
 
   return {
-    defHP, defDfOv, defSdOv, defenderData,
+    defHP, defDfOv, defSdOv, defAtOv, defenderData,
     atkPokeData, atkItem, atkAbility, defAbility, defIsGrounded,
     atkT1, atkT2, defT1, defT2, defW, atkW,
     attacker, atkStats, weather, terrain,
@@ -118,7 +120,7 @@ export function buildCalcCtx(
 
 export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | null {
   const {
-    defHP, defDfOv, defSdOv, defenderData, atkPokeData,
+    defHP, defDfOv, defSdOv, defAtOv, defenderData, atkPokeData,
     atkItem, atkAbility, defAbility, defIsGrounded,
     atkT1, atkT2, defT1, defT2, defW, atkW,
     attacker, atkStats, weather, terrain,
@@ -169,7 +171,7 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   } else if (moveName === 'Psyshock' || moveName === 'Psystrike' || moveName === 'Secret Sword') {
     moveCat = 'PsyshockType'
   } else if (moveName === 'Foul Play') {
-    return null
+    moveCat = 'FoulPlay'
   } else if (bp <= 1) {
     return null
   }
@@ -216,6 +218,8 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
     atkStatRaw = atkStats.df; defStatRaw = defDfOv; moveCat = 'Physical'
   } else if (moveCat === 'PsyshockType') {
     atkStatRaw = atkStats.sa; defStatRaw = defDfOv; moveCat = 'Special'
+  } else if (moveCat === 'FoulPlay') {
+    atkStatRaw = defAtOv; defStatRaw = defDfOv; moveCat = 'Physical'
   } else {
     atkStatRaw = moveCat === 'Physical' ? atkStats.at : atkStats.sa
     defStatRaw = moveCat === 'Physical' ? defDfOv : defSdOv
@@ -260,8 +264,13 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   if (md.isBullet             && defAbility === 'Bulletproof') return null
 
   // TYPE EFFECTIVENESS
-  const typeEff = getTypeEff(moveType, defT1, defT2)
-  if (typeEff === 0) return null
+  let typeEff = getTypeEff(moveType, defT1, defT2)
+  if (typeEff === 0) {
+    if (atkAbility === 'Scrappy' && (moveType === 'Normal' || moveType === 'Fighting') && (defT1 === 'Ghost' || defT2 === 'Ghost'))
+      typeEff = 1
+    else
+      return null
+  }
 
   // Wonder Guard: only super-effective moves land
   if (defAbility === 'Wonder Guard' && typeEff <= 1) return null
@@ -364,7 +373,7 @@ export function buildTableRow(
     }
 
     const r = calcOneMoveResult(moveName, ctx)
-    if (!r) return { move: moveName, moveType: baseType, calc: null }
+    if (!r) return { move: moveName, moveType: baseType, immune: true, calc: null }
 
     if (!bestResult || r.maxPct > bestResult.maxPct) bestResult = r
 

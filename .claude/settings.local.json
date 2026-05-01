@@ -19,7 +19,9 @@
       "Bash(curl -s \"https://www.coupcritique.fr/api/move-name/Bluff\")",
       "Bash(curl -s \"https://www.coupcritique.fr/api/moves/6337\")",
       "Bash(python3 -c \"import json,sys; moves=json.load\\(sys.stdin\\)['moves']; [print\\(m['id'], m['name'], m.get\\('nom',''\\)\\) for m in moves if 'Fake' in m.get\\('name',''\\) or 'Bluff' in m.get\\('nom',''\\)]\")",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(npx tsx -e ' *)",
+      "Bash(read name *)"
     ]
   }
 }

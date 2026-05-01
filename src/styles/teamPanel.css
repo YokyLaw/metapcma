@@ -401,7 +401,6 @@
   border-style: dashed;
   border-color: var(--border);
   background: var(--bg);
-  pointer-events: none;
 }
 .search-select-trigger-label {
   flex: 1;

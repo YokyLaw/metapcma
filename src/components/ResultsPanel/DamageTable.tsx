@@ -38,7 +38,7 @@ export default function DamageTable() {
   }
 
   function thClass(key: SortKey) {
-    return sortKey === key ? 'sorted' : ''
+    return sortKey === key ? 'sorted' : 'sortable'
   }
 
   if (tableData.length === 0) {
@@ -56,8 +56,8 @@ export default function DamageTable() {
       <table className="damage-table">
         <thead>
           <tr>
-            <th className={thClass('name')} onClick={() => handleSort('name')}>OPPONENT</th>
-            <th className={thClass('move')} onClick={() => handleSort('move' as SortKey)}>OFFENSE</th>
+            <th>OFFENSE</th>
+            <th>OPPONENT</th>
             <th>DEFENSE</th>
             <th>SPEEDTIER</th>
           </tr>

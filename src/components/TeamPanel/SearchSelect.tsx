@@ -112,6 +112,8 @@ export default function SearchSelect({
     }
     setSearch('')
     setOpen(true)
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
+    setTooltip(null)
   }
 
   function select(val: string) {

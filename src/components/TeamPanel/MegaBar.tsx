@@ -13,7 +13,9 @@ export default function MegaBar({ slotIndex, pokemon, megaForme }: Props) {
   const megaOptions = getMegaOptions(pokemon)
   const hasCCData = !!(slot.ccMoves || slot.ccItems || slot.ccAbilities)
 
-  if (!megaOptions && !hasCCData) return null
+  const isAegislash = pokemon === 'Aegislash'
+
+  if (!megaOptions && !hasCCData && !isAegislash) return null
 
   function handleMegaClick(forme: string, stone: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -22,9 +24,22 @@ export default function MegaBar({ slotIndex, pokemon, megaForme }: Props) {
 
   return (
     <div className="mega-bar">
+      {isAegislash && (
+        <>
+          <span className="mega-label">Formes :</span>
+          <button
+            className={'mega-btn' + (!megaForme ? ' active' : '')}
+            onClick={e => { e.stopPropagation(); dispatch({ type: 'SELECT_FORME', slot: slotIndex, forme: '' }) }}
+          >Shield</button>
+          <button
+            className={'mega-btn' + (megaForme === 'Aegislash-Blade' ? ' active' : '')}
+            onClick={e => { e.stopPropagation(); dispatch({ type: 'SELECT_FORME', slot: slotIndex, forme: 'Aegislash-Blade' }) }}
+          >Blade</button>
+        </>
+      )}
       {megaOptions && (
         <>
-          <span className="mega-label">Formes</span>
+          <span className="mega-label">Formes :</span>
           <button
             className={'mega-btn' + (!megaForme ? ' active' : '')}
             onClick={e => handleMegaClick('', '', e)}

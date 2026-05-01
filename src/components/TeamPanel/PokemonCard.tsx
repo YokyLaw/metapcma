@@ -18,7 +18,7 @@ import SearchSelect from './SearchSelect'
 import type { SearchOption } from './SearchSelect'
 import StatItem from './StatItem'
 
-const POKE_NAMES = Object.keys(POKE_DATA).filter(n => !n.startsWith('Mega ')).sort((a, b) => {
+const POKE_NAMES = Object.keys(POKE_DATA).filter(n => !n.startsWith('Mega ') && n !== 'Aegislash-Shield' && n !== 'Aegislash-Blade').sort((a, b) => {
   const ua = USAGE_MAP[a] ?? -1
   const ub = USAGE_MAP[b] ?? -1
   if (ub !== ua) return ub - ua
@@ -187,7 +187,8 @@ export default function PokemonCard({ slotIndex }: Props) {
           options={abilityOptions}
           onChange={v => updateField('ability', v)}
           placeholder="— Talent —"
-          disabled={!!slot.megaForme}
+          getDescription={getAbilityDesc}
+          disabled={(!!slot.megaForme && slot.pokemon !== 'Aegislash') || abilityOptions.length <= 1}
           className="search-select--fixed"
         />
 
@@ -195,7 +196,7 @@ export default function PokemonCard({ slotIndex }: Props) {
           value={slot.item}
           options={itemOptions}
           onChange={v => updateField('item', v)}
-          disabled={!!slot.megaForme}
+          disabled={!!slot.megaForme && slot.pokemon !== 'Aegislash'}
           className="search-select--fixed"
         />
 

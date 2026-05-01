@@ -76,6 +76,7 @@ export interface AdvOverride {
 export interface MoveSlotResult {
   move: string
   moveType: string
+  immune?: boolean
   calc: {
     minPct: number
     maxPct: number

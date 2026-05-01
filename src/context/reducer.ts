@@ -1,7 +1,27 @@
 import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey, DefaultSetSnapshot } from '../types'
 import { POKE_DATA } from '../data/pokeData'
+import { MOVE_DATA } from '../data/moveData'
 import { getAbilitiesFor } from '../calc/teamHelpers'
 import { MEGA_MAP } from '../data/megaMap'
+
+type CCMoveList = Array<{ move: { name: string } }>
+
+function filterCCMoves(ccMoves: CCMoveList, megaForme: string): CCMoveList {
+  if (megaForme === 'Mega Charizard X')
+    return ccMoves.filter(m => { const cat = MOVE_DATA[m.move.name]?.category; return cat === 'Physical' || cat === 'Status' })
+  if (megaForme === 'Mega Charizard Y')
+    return ccMoves.filter(m => { const cat = MOVE_DATA[m.move.name]?.category; return cat === 'Special' || cat === 'Status' })
+  return ccMoves
+}
+
+function applyTopMoves(slot: TeamSlot, megaForme: string): void {
+  const ccMoves = slot.ccMoves as CCMoveList | null
+  if (!ccMoves?.length) return
+  const filtered = filterCCMoves(ccMoves, megaForme)
+  const top4 = filtered.slice(0, 4).map(m => m.move.name)
+  while (top4.length < 4) top4.push('')
+  slot.moves = top4 as [string, string, string, string]
+}
 
 function makeSlot(id: number): TeamSlot {
   return {
@@ -66,6 +86,7 @@ export type Action =
   | { type: 'UPDATE_BOOST'; slot: number; stat: keyof BoostMap; value: number }
   | { type: 'UPDATE_SP'; slot: number; stat: keyof StatMap; value: number }
   | { type: 'SELECT_MEGA'; slot: number; megaForme: string; stone: string }
+  | { type: 'SELECT_FORME'; slot: number; forme: string }
   | { type: 'SET_CC_DATA'; slot: number; pokemon: string; ccMoves: unknown[] | null; ccItems: unknown[] | null; ccAbilities: unknown[] | null; ccNature?: { natPlus: string; natMinus: string } | null; ccSps?: StatMap | null }
   | { type: 'TOGGLE_DEFAULT_SET'; slot: number }
   | { type: 'SET_WEATHER'; weather: Weather }
@@ -182,6 +203,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         const megaAbilities = getAbilitiesFor(action.megaForme)
         const megaData = POKE_DATA[action.megaForme]
         slot.ability = megaAbilities ? megaAbilities[0] : (megaData ? (megaData.ab as string) : slot.ability)
+        if (slot.useDefaultSet) applyTopMoves(slot, action.megaForme)
       } else {
         slot.ability = slot.preMegaAbility || slot.ability
         slot.item    = slot.preMegaItem    || slot.item
@@ -204,6 +226,12 @@ export function appReducer(state: AppState, action: Action): AppState {
       }
 
       team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'SELECT_FORME': {
+      const team = [...state.team]
+      team[action.slot] = { ...team[action.slot], megaForme: action.forme }
       return { ...state, team }
     }
 
@@ -303,9 +331,10 @@ export function appReducer(state: AppState, action: Action): AppState {
       const slot = { ...team[action.slot] }
 
       if (!slot.useDefaultSet) {
+        const isMegaWithStone = !!(slot.megaForme && slot.preMegaItem)
         const snapshot: DefaultSetSnapshot = {
-          ability: slot.megaForme ? (slot.preMegaAbility || slot.ability) : slot.ability,
-          item:    slot.megaForme ? (slot.preMegaItem    || slot.item)    : slot.item,
+          ability: isMegaWithStone ? (slot.preMegaAbility || slot.ability) : slot.ability,
+          item:    isMegaWithStone ? (slot.preMegaItem    || slot.item)    : slot.item,
           natPlus: slot.natPlus,
           natMinus: slot.natMinus,
           sps: { ...slot.sps },
@@ -314,7 +343,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.preDefaultSet = snapshot
         slot.useDefaultSet = true
 
-        if (!slot.megaForme) {
+        if (!isMegaWithStone) {
           const topAbility = (slot.ccAbilities as Array<{ ability: { name: string } }> | null)?.[0]?.ability?.name
           if (topAbility) slot.ability = topAbility
 
@@ -329,12 +358,7 @@ export function appReducer(state: AppState, action: Action): AppState {
           }
         }
 
-        const ccMoves = slot.ccMoves as Array<{ move: { name: string } }> | null
-        if (ccMoves?.length) {
-          const top4 = ccMoves.slice(0, 4).map(m => m.move.name)
-          while (top4.length < 4) top4.push('')
-          slot.moves = top4 as [string, string, string, string]
-        }
+        applyTopMoves(slot, slot.megaForme || '')
 
         if (slot.ccNature) {
           slot.natPlus  = slot.ccNature.natPlus
@@ -346,7 +370,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       } else {
         slot.useDefaultSet = false
         if (slot.preDefaultSet) {
-          if (slot.megaForme) {
+          if (slot.megaForme && slot.preMegaItem) {
             slot.preMegaAbility = slot.preDefaultSet.ability
             slot.preMegaItem    = slot.preDefaultSet.item
           } else {
