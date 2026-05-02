@@ -35,7 +35,7 @@ export default function MatchupTab() {
           </div>
 
           {team[activeSlot]?.pokemon
-            ? <PokemonCard slotIndex={activeSlot} />
+            ? <PokemonCard slotIndex={activeSlot} showBoosts />
             : <div className="matchup-no-poke">Slot vide</div>
           }
 

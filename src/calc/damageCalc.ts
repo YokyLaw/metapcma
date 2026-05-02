@@ -189,7 +189,6 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   if (atkAbility === 'Iron Fist'   && md.isPunch)                           bpMult *= 1.2
   if (atkAbility === 'Punk Rock'   && md.isSound)                           bpMult *= 1.3
   if (atkAbility === 'Sheer Force' && md.hasSecondaryEffect)                bpMult *= 1.3
-  if (atkAbility === 'Sand Force'  && weather === 'Sand' && ['Rock','Ground','Steel'].includes(moveType)) bpMult *= 1.3
   if (atkAbility === 'Tough Claws' && md.makesContact)                      bpMult *= 1.3
 
   let techBP = bp * bpMult
@@ -288,6 +287,7 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   if (atkItem === 'Expert Belt' && typeEff > 1)              finalMod *= 1.2
   if (atkAbility === 'Tinted Lens' && typeEff < 1)           finalMod *= 2
   if (atkAbility === 'Neuroforce'  && typeEff > 1)           finalMod *= 1.25
+  if (atkAbility === 'Sand Force'  && weather === 'Sand' && ['Rock','Ground','Steel'].includes(moveType)) finalMod *= 1.3
 
   // STAB
   const stab = getSTAB(moveType, atkT1, atkT2, atkAbility)

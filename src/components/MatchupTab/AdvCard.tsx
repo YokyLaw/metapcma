@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { POKE_DATA } from '../../data/pokeData'
 import { MOVE_DATA } from '../../data/moveData'
 import { ITEM_DATA } from '../../data/itemData'
 import { USAGE_MAP } from '../../data/usageData'
-import { NATURE_DATA, NATURE_STATS, NATURE_STAT_LABELS, STAT_KEYS, STAT_LABELS } from '../../data/constants'
-import { spriteUrl, itemSpriteUrl, getAbilitiesFor, getBaseNameForCC, getMegaOptions } from '../../calc/teamHelpers'
-import { calcStat } from '../../calc/statCalc'
+import { NATURE_DATA, NATURE_STATS, NATURE_STAT_LABELS, STAT_KEYS, STAT_LABELS, BOOST_OPTIONS, STAT_BOOST_MULTS } from '../../data/constants'
+import { spriteUrl, itemSpriteUrl, getAbilitiesFor, getBaseNameForCC, getMegaOptions, getEffectivePokeName } from '../../calc/teamHelpers'
+import { calcStat, getStats } from '../../calc/statCalc'
+import { buildCalcCtx, calcOneMoveResult } from '../../calc/damageCalc'
+import type { CalcCtx } from '../../calc/damageCalc'
 import { getAbilityDesc } from '../../hooks/useAbilityDesc'
 import { getMoveDesc } from '../../hooks/useMoveDesc'
 import { useAdvCC } from '../../hooks/useAdvCC'
 import SearchSelect from '../TeamPanel/SearchSelect'
 import type { SearchOption } from '../TeamPanel/SearchSelect'
-
-const CAT_SHORT: Record<string, string> = { Physical: 'PHY', Special: 'SPC', Status: 'STA' }
+import type { StatMap, AdvOverride, TeamSlot } from '../../types'
 
 type AdvStatKey = 'sp_hp'|'sp_df'|'sp_sd'|'sp_sp'|'sp_at'|'sp_sa'
 const STAT_KEY_MAP: Record<string, AdvStatKey> = {
@@ -25,18 +26,24 @@ interface AdvStatItemProps {
   statKey: string
   statLabel: string
   spValue: number
+  boostValue: number
   baseStat: number
   natPlus: string
   natMinus: string
+  baseStatChange?: number
+  baseStatDiff?: number
 }
 
-function AdvStatItem({ pokeName, statKey, statLabel, spValue, baseStat, natPlus, natMinus }: AdvStatItemProps) {
+function AdvStatItem({ pokeName, statKey, statLabel, spValue, boostValue, baseStat, natPlus, natMinus, baseStatChange = 0, baseStatDiff = 0 }: AdvStatItemProps) {
   const { dispatch } = useAppState()
   const spValRef = useRef<HTMLSpanElement>(null)
 
-  const computedTotal = statKey === 'hp'
+  const rawTotal = statKey === 'hp'
     ? calcStat(baseStat, spValue, ['', ''], 'hp')
     : calcStat(baseStat, spValue, [natPlus, natMinus], statKey as 'at'|'df'|'sa'|'sd'|'sp')
+  const boostStr = boostValue > 0 ? '+' + boostValue : String(boostValue)
+  const boostClass = boostValue > 0 ? ' boosted' : boostValue < 0 ? ' dropped' : ''
+  const computedTotal = statKey !== 'hp' ? Math.floor(rawTotal * (STAT_BOOST_MULTS[boostStr] ?? 1)) : rawTotal
 
   function step(delta: number, e: React.UIEvent) {
     e.stopPropagation()
@@ -50,6 +57,12 @@ function AdvStatItem({ pokeName, statKey, statLabel, spValue, baseStat, natPlus,
     const val = Math.max(0, Math.min(32, parseInt(spValRef.current.textContent || '0') || 0))
     spValRef.current.textContent = String(val)
     dispatch({ type: 'SET_ADV_STAT', pokeName, statKey: STAT_KEY_MAP[statKey], value: val })
+  }
+
+  function handleBoostChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    e.stopPropagation()
+    const val = e.target.value === '0' ? 0 : parseInt(e.target.value)
+    dispatch({ type: 'SET_ADV_BOOST', pokeName, statKey, value: val })
   }
 
   return (
@@ -72,12 +85,34 @@ function AdvStatItem({ pokeName, statKey, statLabel, spValue, baseStat, natPlus,
             onClick={e => { e.stopPropagation(); (e.target as HTMLElement).textContent = '' }}
             onWheel={e => step(e.deltaY < 0 ? 1 : -1, e)}
           >{spValue}</span>
-          <span className="stat-total">{computedTotal}</span>
         </div>
         <div className="sp-btn-row">
           <button className="sp-btn" onClick={e => step(-1, e)}>▼</button>
           <button className="sp-btn-extreme" onClick={e => { e.stopPropagation(); e.preventDefault(); dispatch({ type: 'SET_ADV_STAT', pokeName, statKey: STAT_KEY_MAP[statKey], value: 0 }) }}>⇓</button>
         </div>
+        <span className={
+          'stat-total' +
+          (baseStatChange > 0 ? ' stat-up' : baseStatChange < 0 ? ' stat-down' : '')
+        }>
+          {computedTotal}
+          {baseStatDiff !== 0 && (
+            <span className="stat-diff">
+              ({baseStatDiff > 0 ? '+' : ''}{baseStatDiff})
+            </span>
+          )}
+        </span>
+        {statKey !== 'hp' && (
+          <select
+            className={'stat-boost-sel' + boostClass}
+            value={boostStr}
+            onChange={handleBoostChange}
+            onClick={e => e.stopPropagation()}
+          >
+            {BOOST_OPTIONS.map(v => (
+              <option key={v} value={v}>{v === '0' ? '±0' : v}</option>
+            ))}
+          </select>
+        )}
       </div>
     </div>
   )
@@ -88,16 +123,23 @@ interface AdvMoveSlotProps {
   moveIdx: number
   value: string
   options: SearchOption[]
+  calcCtx?: CalcCtx | null
 }
 
-function AdvMoveSlot({ pokeName, moveIdx, value, options }: AdvMoveSlotProps) {
+function AdvMoveSlot({ pokeName, moveIdx, value, options, calcCtx }: AdvMoveSlotProps) {
   const { dispatch } = useAppState()
   const md = value ? MOVE_DATA[value] : null
   const dotColor = md ? `var(--${md.type})` : 'var(--muted)'
-  const catShort = md?.category ? CAT_SHORT[md.category] : null
-  const bp = md && (md as { bp?: number }).bp && (md as { bp?: number }).bp! > 1
-    ? (md as { bp?: number }).bp!
-    : null
+
+  function getDamage(moveName: string): string | undefined {
+    if (!calcCtx || !moveName) return undefined
+    const r = calcOneMoveResult(moveName, calcCtx)
+    if (!r || r.maxPct === 0) return undefined
+    if (r.minPct >= 100) return 'OHKO'
+    const min = (Math.floor(r.minPct * 10) / 10).toFixed(1)
+    const max = (Math.floor(r.maxPct * 10) / 10).toFixed(1)
+    return min === max ? `${min}%` : `${min}~${max}%`
+  }
 
   return (
     <div className="move-slot">
@@ -108,12 +150,8 @@ function AdvMoveSlot({ pokeName, moveIdx, value, options }: AdvMoveSlotProps) {
         onChange={v => dispatch({ type: 'SET_ADV_MOVE', pokeName, moveIdx, value: v })}
         placeholder="(Aucun)"
         getDescription={getMoveDesc}
+        getMeta={calcCtx ? getDamage : undefined}
       />
-      {catShort && (
-        <span className="move-cat-badge" style={{ color: dotColor }}>
-          {catShort}{bp ? ` ${bp}` : ''}
-        </span>
-      )}
     </div>
   )
 }
@@ -139,8 +177,6 @@ export default function AdvCard() {
   const { state, dispatch } = useAppState()
   const pokeName = state.matchupAdvName || ''
   const { ccAbilities, ccMoves, ccItems, ccNature, ccSps, isLoaded } = useAdvCC(pokeName)
-  const autoTriggeredRef = useRef<string>('')
-  const isAutoOn = state.advAutoSet?.[pokeName] ?? false
   const [copied, setCopied] = useState(false)
 
   const baseName    = getBaseNameForCC(pokeName)
@@ -149,6 +185,23 @@ export default function AdvCard() {
   const advPokeData = pokeName ? POKE_DATA[pokeName] : null
 
   const adv = state.advStats[pokeName] || {}
+  const advBoosts = state.advBoosts[pokeName] || {}
+  const baseAdvPokeData = isMegaRow ? POKE_DATA[baseName] : null
+  const teamSlot = state.selectedSlot != null ? state.team[state.selectedSlot] : null
+
+  function getBaseStatChange(key: string): number {
+    if (!advPokeData || !baseAdvPokeData) return 0
+    const base = (baseAdvPokeData.bs as Record<string, number>)[key] || 0
+    const current = (advPokeData.bs as Record<string, number>)[key] || 0
+    return current > base ? 1 : current < base ? -1 : 0
+  }
+
+  function getBaseStatDiff(key: string): number {
+    if (!advPokeData || !baseAdvPokeData) return 0
+    const base = (baseAdvPokeData.bs as Record<string, number>)[key] || 0
+    const current = (advPokeData.bs as Record<string, number>)[key] || 0
+    return current - base
+  }
   const spMap: Record<string, number> = {
     hp: adv.sp_hp ?? 0, at: adv.sp_at ?? 0, df: adv.sp_df ?? 0,
     sa: adv.sp_sa ?? 0, sd: adv.sp_sd ?? 0, sp: adv.sp_sp ?? 0,
@@ -158,6 +211,38 @@ export default function AdvCard() {
   const advAbility  = adv.ability  || ''
   const advMoves    = state.advMoves[pokeName] ?? ['', '', '', '']
   const advItem     = state.advItems[pokeName] || '(No Item)'
+
+  const advAsAtkCtx = useMemo(() => {
+    if (!advPokeData || !teamSlot?.pokemon) return null
+    const defEffName = getEffectivePokeName(teamSlot)
+    const defPokeData = POKE_DATA[defEffName]
+    if (!defPokeData) return null
+    const advSps: StatMap = { hp: spMap.hp ?? 0, at: spMap.at ?? 0, df: spMap.df ?? 0, sa: spMap.sa ?? 0, sd: spMap.sd ?? 0, sp: spMap.sp ?? 0 }
+    const advAtkStats = getStats(advPokeData, advSps, advNatPlus, advNatMinus)
+    const pseudoSlot: Partial<TeamSlot> = {
+      pokemon: isMegaRow ? baseName : pokeName,
+      megaForme: isMegaRow ? pokeName : '',
+      ability: advAbility || (advPokeData.ab as string) || '',
+      item: advItem,
+      boosts: advBoosts as Record<string, number>,
+    }
+    const teamOverride: Partial<AdvOverride> = {
+      sp_hp: teamSlot.sps.hp ?? 0, sp_at: teamSlot.sps.at ?? 0, sp_df: teamSlot.sps.df ?? 0,
+      sp_sa: teamSlot.sps.sa ?? 0, sp_sd: teamSlot.sps.sd ?? 0, sp_sp: teamSlot.sps.sp ?? 0,
+      natPlus: teamSlot.natPlus, natMinus: teamSlot.natMinus,
+      ability: teamSlot.ability,
+    }
+    return buildCalcCtx(pseudoSlot as TeamSlot, advAtkStats, defPokeData, teamOverride, state.weather, state.terrain)
+  }, [
+    pokeName, advAbility, advItem, advNatPlus, advNatMinus, isMegaRow, baseName,
+    spMap.hp, spMap.at, spMap.df, spMap.sa, spMap.sd, spMap.sp,
+    advBoosts,
+    teamSlot?.pokemon, teamSlot?.megaForme, teamSlot?.ability, teamSlot?.item,
+    teamSlot?.natPlus, teamSlot?.natMinus,
+    teamSlot?.sps.hp, teamSlot?.sps.at, teamSlot?.sps.df,
+    teamSlot?.sps.sa, teamSlot?.sps.sd, teamSlot?.sps.sp,
+    state.weather, state.terrain,
+  ])
 
   const megaOwnAbilities  = isMegaRow ? (getAbilitiesFor(pokeName) ?? []) : []
   const allKnownAbilities = isMegaRow ? megaOwnAbilities : (getAbilitiesFor(pokeName) ?? [])
@@ -200,14 +285,6 @@ export default function AdvCard() {
     return ccMoves.slice(0, 4)
   })()
 
-  useEffect(() => {
-    if (!pokeName || !isLoaded) return
-    if (autoTriggeredRef.current === pokeName) return
-    autoTriggeredRef.current = pokeName
-    if ((state.advAutoSet?.[pokeName]) !== undefined) return
-    handleToggleAuto()
-  }, [pokeName, isLoaded])
-
   const moveOptions: SearchOption[] = ccMoves.map(m => ({
     value: m.move.name, label: m.move.name,
     meta: m.percent > 0 ? `${fmt(m.percent)}%` : undefined,
@@ -222,7 +299,7 @@ export default function AdvCard() {
     ...ITEM_DATA.map(it => ({ value: it, label: it, image: itemSpriteUrl(it) })),
   ]
 
-  function handleToggleAuto() {
+  function handleApplyCommonSet() {
     const topAbility = isMegaRow
       ? megaOwnAbilities[0] || ''
       : ccAbilities[0]?.ability?.name || allKnownAbilities[0] || ''
@@ -230,7 +307,7 @@ export default function AdvCard() {
     const moves4: [string, string, string, string] = ['', '', '', '']
     topMoves.slice(0, 4).forEach((m, i) => { moves4[i] = m.move.name })
     dispatch({
-      type: 'TOGGLE_ADV_AUTO',
+      type: 'APPLY_ADV_COMMON',
       pokeName,
       ccAbility: topAbility,
       ccItem:    topItem,
@@ -307,7 +384,7 @@ export default function AdvCard() {
             </>
           )}
           {hasCCData && (
-            <button className={'mega-btn' + (isAutoOn ? ' active' : '')} style={{ marginLeft: 'auto' }} onClick={handleToggleAuto}>Auto</button>
+            <button className="mega-btn" style={{ marginLeft: 'auto' }} onClick={handleApplyCommonSet}>Most Common Set</button>
           )}
         </div>
       )}
@@ -365,9 +442,12 @@ export default function AdvCard() {
                 statKey={key}
                 statLabel={STAT_LABELS[i]}
                 spValue={spMap[key] ?? 0}
+                boostValue={advBoosts[key] ?? 0}
                 baseStat={(advPokeData.bs as Record<string, number>)[key] ?? 0}
                 natPlus={advNatPlus}
                 natMinus={advNatMinus}
+                baseStatChange={getBaseStatChange(key)}
+                baseStatDiff={getBaseStatDiff(key)}
               />
             ))}
           </div>
@@ -383,6 +463,7 @@ export default function AdvCard() {
                   moveIdx={mi}
                   value={mv}
                   options={available}
+                  calcCtx={advAsAtkCtx}
                 />
               )
             })}

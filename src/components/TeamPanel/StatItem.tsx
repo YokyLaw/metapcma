@@ -8,16 +8,16 @@ interface Props {
   statKey: StatKey
   statLabel: string
   spValue: number
-  boostValue: number
+  boostValue?: number
   computedTotal: number
-  isBoostable: boolean
+  isBoostable?: boolean
   baseStatChange?: number
   baseStatDiff?: number
   baseStat?: number
 }
 
 export default function StatItem({
-  slotIndex, statKey, statLabel, spValue, boostValue, computedTotal, isBoostable, baseStatChange = 0, baseStatDiff = 0, baseStat
+  slotIndex, statKey, statLabel, spValue, boostValue = 0, computedTotal, isBoostable = false, baseStatChange = 0, baseStatDiff = 0, baseStat
 }: Props) {
   const { dispatch } = useAppState()
   const spValRef = useRef<HTMLSpanElement>(null)
@@ -69,35 +69,35 @@ export default function StatItem({
           >
             {spValue}
           </span>
-          <span className={
-            'stat-total' +
-            (baseStatChange > 0 ? ' stat-up' : baseStatChange < 0 ? ' stat-down' : '')
-          }>
-            {computedTotal}
-            {baseStatDiff !== 0 && (
-              <span className="stat-diff">
-                ({baseStatDiff > 0 ? '+' : ''}{baseStatDiff})
-              </span>
-            )}
-          </span>
         </div>
         <div className="sp-btn-row">
           <button className="sp-btn" onClick={e => stepSP(-1, e)}>▼</button>
           <button className="sp-btn-extreme" onClick={e => { e.stopPropagation(); e.preventDefault(); dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat: statKey, value: 0 }) }}>⇓</button>
         </div>
+        <span className={
+          'stat-total' +
+          (baseStatChange > 0 ? ' stat-up' : baseStatChange < 0 ? ' stat-down' : '')
+        }>
+          {computedTotal}
+          {baseStatDiff !== 0 && (
+            <span className="stat-diff">
+              ({baseStatDiff > 0 ? '+' : ''}{baseStatDiff})
+            </span>
+          )}
+        </span>
+        {isBoostable && (
+          <select
+            className={'stat-boost-sel' + boostClass}
+            value={boostStr}
+            onChange={handleBoostChange}
+            onClick={e => e.stopPropagation()}
+          >
+            {BOOST_OPTIONS.map(v => (
+              <option key={v} value={v}>{v === '0' ? '±0' : v}</option>
+            ))}
+          </select>
+        )}
       </div>
-      {isBoostable && (
-        <select
-          className={'stat-boost-sel' + boostClass}
-          value={boostStr}
-          onChange={handleBoostChange}
-          onClick={e => e.stopPropagation()}
-        >
-          {BOOST_OPTIONS.map(v => (
-            <option key={v} value={v}>{v === '0' ? '±0' : v}</option>
-          ))}
-        </select>
-      )}
     </div>
   )
 }

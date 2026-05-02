@@ -20,6 +20,7 @@ interface Props {
   disabled?: boolean
   className?: string
   getDescription?: (value: string) => string | undefined
+  getMeta?: (value: string) => string | undefined
 }
 
 interface TooltipState {
@@ -41,6 +42,7 @@ export default function SearchSelect({
   disabled = false,
   className = '',
   getDescription,
+  getMeta,
 }: Props) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
@@ -117,6 +119,7 @@ export default function SearchSelect({
   }
 
   function select(val: string) {
+    handleLeave()
     onChange(val)
     setSearch('')
     setOpen(false)
@@ -152,7 +155,7 @@ export default function SearchSelect({
   }
 
   return (
-    <div className={'search-select' + (className ? ' ' + className : '')} ref={ref} onClick={e => e.stopPropagation()}>
+    <div className={'search-select' + (className ? ' ' + className : '')} ref={ref} onClick={e => e.stopPropagation()} onMouseLeave={handleLeave}>
       {open ? (
         <input
           ref={inputRef}
@@ -178,14 +181,12 @@ export default function SearchSelect({
               <img className="search-select-img" src={currentOption.image} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
             )}
             <span className="search-select-trigger-label">{value ? currentLabel : placeholder}</span>
-            {currentOption?.meta && (
-              <span className="search-select-meta">{currentOption.meta}</span>
-            )}
+            {(() => { const m = getMeta ? getMeta(value) : currentOption?.meta; return m ? <span className="search-select-meta">{m}</span> : null })()}
           </div>
         )
       })()}
       {open && (
-        <ul className="search-select-list" style={listStyle} onClick={e => e.stopPropagation()}>
+        <ul className="search-select-list" style={listStyle} onClick={e => e.stopPropagation()} onScroll={handleLeave}>
           {placeholder && (
             <li
               className={'search-select-item' + (value === '' ? ' active' : '')}
@@ -211,7 +212,7 @@ export default function SearchSelect({
                     {o.image && <img className="search-select-img" src={o.image} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />}
                     <span>{o.label}</span>
                   </span>
-                  {o.meta && <span className="search-select-meta">{o.meta}</span>}
+                  {(() => { const m = getMeta ? getMeta(o.value) : o.meta; return m ? <span className="search-select-meta">{m}</span> : null })()}
                 </li>
               )
             })

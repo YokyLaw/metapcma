@@ -59,11 +59,11 @@ export default function MegaBar({ slotIndex, pokemon, megaForme }: Props) {
       )}
       {hasCCData && (
         <button
-          className={'mega-btn' + (slot.useDefaultSet ? ' active' : '')}
+          className="mega-btn"
           style={{ marginLeft: 'auto' }}
-          onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_DEFAULT_SET', slot: slotIndex }) }}
+          onClick={e => { e.stopPropagation(); dispatch({ type: 'APPLY_DEFAULT_SET', slot: slotIndex }) }}
         >
-          Auto
+          Most Common Set
         </button>
       )}
     </div>

@@ -41,9 +41,10 @@ const NAT_MINUS_OPTIONS: SearchOption[] = NATURE_STATS.map(s => ({
 
 interface Props {
   slotIndex: number
+  showBoosts?: boolean
 }
 
-export default function PokemonCard({ slotIndex }: Props) {
+export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
   const { state, dispatch } = useAppState()
   const slot = state.team[slotIndex]
   const isSelected = state.selectedSlot === slotIndex
@@ -256,7 +257,7 @@ export default function PokemonCard({ slotIndex }: Props) {
             spValue={(slot.sps as Record<string, number>)[key] || 0}
             boostValue={key !== 'hp' ? (slot.boosts as Record<string, number>)[key] || 0 : 0}
             computedTotal={getTotal(key)}
-            isBoostable={key !== 'hp'}
+            isBoostable={showBoosts && key !== 'hp'}
             baseStatChange={getBaseStatChange(key)}
             baseStatDiff={getBaseStatDiff(key)}
             baseStat={pokeData ? (pokeData.bs as Record<string, number>)[key] ?? undefined : undefined}

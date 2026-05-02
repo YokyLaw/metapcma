@@ -75,6 +75,7 @@ export interface AppState {
   advItems: Record<string, string>
   advAutoSet: Record<string, boolean>
   advPreAutoSet: Record<string, AdvPreAutoSet>
+  advBoosts: Record<string, Record<string, number>>
 }
 
 interface AdvPreAutoSet {
@@ -105,6 +106,7 @@ export const initialState: AppState = {
   advItems: {},
   advAutoSet: {},
   advPreAutoSet: {},
+  advBoosts: {},
 }
 
 export type Action =
@@ -117,6 +119,7 @@ export type Action =
   | { type: 'SELECT_FORME'; slot: number; forme: string }
   | { type: 'SET_CC_DATA'; slot: number; pokemon: string; ccMoves: unknown[] | null; ccItems: unknown[] | null; ccAbilities: unknown[] | null; ccNature?: { natPlus: string; natMinus: string } | null; ccSps?: StatMap | null }
   | { type: 'TOGGLE_DEFAULT_SET'; slot: number }
+  | { type: 'APPLY_DEFAULT_SET'; slot: number }
   | { type: 'SET_WEATHER'; weather: Weather }
   | { type: 'SET_TERRAIN'; terrain: Terrain }
   | { type: 'SET_TAILWIND'; value: boolean }
@@ -137,6 +140,8 @@ export type Action =
   | { type: 'RESET_ADV'; pokeName: string; ability: string; moves: [string, string, string, string] }
   | { type: 'SET_ADV_ITEM'; pokeName: string; value: string }
   | { type: 'TOGGLE_ADV_AUTO'; pokeName: string; ccAbility: string; ccItem: string; ccNatPlus: string; ccNatMinus: string; ccSps: Record<string, number> | null; ccMoves: [string, string, string, string] }
+  | { type: 'SET_ADV_BOOST'; pokeName: string; statKey: string; value: number }
+  | { type: 'APPLY_ADV_COMMON'; pokeName: string; ccAbility: string; ccItem: string; ccNatPlus: string; ccNatMinus: string; ccSps: Record<string, number> | null; ccMoves: [string, string, string, string] }
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -460,6 +465,32 @@ export function appReducer(state: AppState, action: Action): AppState {
       }
     }
 
+    case 'SET_ADV_BOOST': {
+      const prev = state.advBoosts[action.pokeName] || {}
+      return {
+        ...state,
+        advBoosts: { ...state.advBoosts, [action.pokeName]: { ...prev, [action.statKey]: action.value } },
+      }
+    }
+
+    case 'APPLY_ADV_COMMON': {
+      const newSps = action.ccSps ?? { hp: 0, at: 0, df: 0, sa: 0, sd: 0, sp: 0 }
+      return {
+        ...state,
+        advStats: {
+          ...state.advStats,
+          [action.pokeName]: {
+            ability:  action.ccAbility,
+            natPlus:  action.ccNatPlus, natMinus: action.ccNatMinus,
+            sp_hp: newSps.hp ?? 0, sp_at: newSps.at ?? 0, sp_df: newSps.df ?? 0,
+            sp_sa: newSps.sa ?? 0, sp_sd: newSps.sd ?? 0, sp_sp: newSps.sp ?? 0,
+          },
+        },
+        advMoves: { ...state.advMoves, [action.pokeName]: action.ccMoves },
+        advItems: { ...state.advItems, [action.pokeName]: action.ccItem || '(No Item)' },
+      }
+    }
+
     case 'RESET_ADV': {
       const resetStats: Partial<AdvOverride> = {
         sp_hp: 0, sp_at: 0, sp_df: 0, sp_sa: 0, sp_sd: 0, sp_sp: 0,
@@ -469,6 +500,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         ...state,
         advStats: { ...state.advStats, [action.pokeName]: resetStats },
         advMoves: { ...state.advMoves, [action.pokeName]: action.moves },
+        advBoosts: { ...state.advBoosts, [action.pokeName]: {} },
       }
     }
 
@@ -529,6 +561,40 @@ export function appReducer(state: AppState, action: Action): AppState {
           slot.moves    = [...slot.preDefaultSet.moves] as [string, string, string, string]
           slot.preDefaultSet = null
         }
+      }
+
+      team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'APPLY_DEFAULT_SET': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+      const isMegaWithStone = !!(slot.megaForme && slot.preMegaItem)
+
+      if (!isMegaWithStone) {
+        const topAbility = (slot.ccAbilities as Array<{ ability: { name: string } }> | null)?.[0]?.ability?.name
+        if (topAbility) slot.ability = topAbility
+
+        const topItem = (slot.ccItems as Array<{ item: { name: string } }> | null)?.[0]?.item?.name
+        if (topItem) {
+          slot.item = topItem
+          for (let i = 0; i < team.length; i++) {
+            if (i !== action.slot && team[i].item === topItem) {
+              team[i] = { ...team[i], item: '(No Item)', useDefaultSet: false, preDefaultSet: null }
+            }
+          }
+        }
+      }
+
+      applyTopMoves(slot, slot.megaForme || '')
+
+      if (slot.ccNature) {
+        slot.natPlus  = slot.ccNature.natPlus
+        slot.natMinus = slot.ccNature.natMinus
+      }
+      if (slot.ccSps) {
+        slot.sps = { ...slot.ccSps }
       }
 
       team[action.slot] = slot

@@ -21,7 +21,9 @@
       "Bash(python3 -c \"import json,sys; moves=json.load\\(sys.stdin\\)['moves']; [print\\(m['id'], m['name'], m.get\\('nom',''\\)\\) for m in moves if 'Fake' in m.get\\('name',''\\) or 'Bluff' in m.get\\('nom',''\\)]\")",
       "Bash(grep *)",
       "Bash(npx tsx -e ' *)",
-      "Bash(read name *)"
+      "Bash(read name *)",
+      "Bash(rtk grep *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }
