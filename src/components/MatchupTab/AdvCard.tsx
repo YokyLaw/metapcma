@@ -14,7 +14,7 @@ import { getMoveDesc } from '../../hooks/useMoveDesc'
 import { useAdvCC } from '../../hooks/useAdvCC'
 import SearchSelect from '../TeamPanel/SearchSelect'
 import type { SearchOption } from '../TeamPanel/SearchSelect'
-import type { StatMap, AdvOverride, TeamSlot } from '../../types'
+import type { StatMap, BoostMap, AdvOverride, TeamSlot } from '../../types'
 
 type AdvStatKey = 'sp_hp'|'sp_df'|'sp_sd'|'sp_sp'|'sp_at'|'sp_sa'
 const STAT_KEY_MAP: Record<string, AdvStatKey> = {
@@ -224,7 +224,7 @@ export default function AdvCard() {
       megaForme: isMegaRow ? pokeName : '',
       ability: advAbility || (advPokeData.ab as string) || '',
       item: advItem,
-      boosts: advBoosts as Record<string, number>,
+      boosts: advBoosts as BoostMap,
     }
     const teamOverride: Partial<AdvOverride> = {
       sp_hp: teamSlot.sps.hp ?? 0, sp_at: teamSlot.sps.at ?? 0, sp_df: teamSlot.sps.df ?? 0,
