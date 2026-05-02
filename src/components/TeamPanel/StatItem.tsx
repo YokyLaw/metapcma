@@ -22,8 +22,9 @@ export default function StatItem({
   const { dispatch } = useAppState()
   const spValRef = useRef<HTMLSpanElement>(null)
 
-  function stepSP(delta: number, e: React.MouseEvent) {
+  function stepSP(delta: number, e: React.UIEvent) {
     e.stopPropagation()
+    e.preventDefault()
     const next = Math.max(0, Math.min(32, spValue + delta))
     if (next !== spValue) {
       dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat: statKey, value: next })
@@ -51,7 +52,10 @@ export default function StatItem({
       <span className="stat-label">{statLabel}</span>
       {baseStat !== undefined && <span className="base-stat-ref">{baseStat}</span>}
       <div className="sp-spinner">
-        <button className="sp-btn" onClick={e => stepSP(1, e)}>▲</button>
+        <div className="sp-btn-row">
+          <button className="sp-btn" onClick={e => stepSP(1, e)}>▲</button>
+          <button className="sp-btn-extreme" onClick={e => { e.stopPropagation(); e.preventDefault(); dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat: statKey, value: 32 }) }}>⇑</button>
+        </div>
         <div className="sp-val-wrap">
           <span
             ref={spValRef}
@@ -60,7 +64,8 @@ export default function StatItem({
             suppressContentEditableWarning
             onBlur={commitSP}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur() } }}
-            onClick={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); (e.target as HTMLElement).textContent = '' }}
+            onWheel={e => stepSP(e.deltaY < 0 ? 1 : -1, e)}
           >
             {spValue}
           </span>
@@ -76,7 +81,10 @@ export default function StatItem({
             )}
           </span>
         </div>
-        <button className="sp-btn" onClick={e => stepSP(-1, e)}>▼</button>
+        <div className="sp-btn-row">
+          <button className="sp-btn" onClick={e => stepSP(-1, e)}>▼</button>
+          <button className="sp-btn-extreme" onClick={e => { e.stopPropagation(); e.preventDefault(); dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat: statKey, value: 0 }) }}>⇓</button>
+        </div>
       </div>
       {isBoostable && (
         <select

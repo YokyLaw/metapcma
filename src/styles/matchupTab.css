@@ -1,0 +1,213 @@
+.matchup-root {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
+.matchup-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* LEFT */
+.matchup-left {
+  width: 460px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  background: var(--bg);
+}
+
+.matchup-slot-bar {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.matchup-slot-btn {
+  flex: 1;
+  height: 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  transition: border-color 0.15s;
+}
+.matchup-slot-btn:hover { border-color: var(--accent); }
+.matchup-slot-btn.active { border-color: var(--accent); background: var(--surface2); }
+
+.matchup-slot-sprite {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.matchup-slot-num {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.matchup-no-poke {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 20px;
+}
+
+.matchup-notes {
+  width: 100%;
+  min-height: 90px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  resize: vertical;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.matchup-notes:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.matchup-notes::placeholder { color: var(--muted); }
+
+/* MIDDLE */
+.matchup-middle {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+  background: var(--bg);
+}
+
+.matchup-damage-table {
+  width: 100%;
+}
+
+.matchup-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 200px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.matchup-empty-icon {
+  font-size: 32px;
+  color: #f5a623;
+  opacity: 0.4;
+}
+
+/* Adv form bar (mirrors left slot bar) */
+.adv-form-bar {
+  min-height: 44px;
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
+.adv-auto-btn {
+  margin-left: auto;
+  flex: none !important;
+  width: 52px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* RIGHT */
+.matchup-right {
+  width: 460px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  padding: 10px;
+  padding-top: 64px;
+}
+
+.matchup-adv-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 200px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+.matchup-adv-placeholder-icon {
+  font-size: 32px;
+  opacity: 0.3;
+}
+
+
+/* Simplified opponent cell */
+.adv-block-simple {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.adv-simple-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 2px;
+}
+
+.adv-simple-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.adv-simple-nature {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.boosted-text { color: #7fc47f; }
+.dropped-text { color: #e07070; }
+
+/* DamageRow clickable/selected states */
+.mainrow.adv-row-clickable { cursor: pointer; }
+.mainrow.adv-row-clickable:hover { background: rgba(255,255,255,0.03); }
+.mainrow.adv-row-selected { background: rgba(99,179,237,0.07); outline: 1px solid rgba(99,179,237,0.3); }
+
+/* Favorite star button */
+.fav-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.1s;
+}
+.fav-star:hover { color: #f5a623; transform: scale(1.15); }
+.fav-star.fav-active { color: #f5a623; }

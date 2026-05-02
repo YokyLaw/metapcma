@@ -247,6 +247,22 @@
   display: flex; align-items: center; justify-content: center;
 }
 .def-sp-btn:hover { background: #1e222e; color: var(--text); }
+.def-sp-btn-extreme {
+  background: var(--accent);
+  border: 1px solid var(--border);
+  color: #000;
+  font-size: 8px;
+  line-height: 1;
+  width: 12px;
+  height: 16px;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 2px;
+  opacity: 0.45;
+  transition: opacity 0.1s, color 0.1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.def-sp-btn-extreme:hover { opacity: 1; color: var(--accent); }
 .def-sp-val {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
@@ -310,7 +326,7 @@
 .adv-move-pct {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
-  color: var(--muted);
+  color: inherit;
   flex-shrink: 0;
 }
 .adv-moves-empty { color: var(--muted); font-size: 12px; }

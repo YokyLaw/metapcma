@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppState } from '../../context/AppContext'
+import { NATURE_DATA } from '../../data/constants'
 import { useFetchCCForSlot } from '../../hooks/useCC'
 import { POKE_DATA } from '../../data/pokeData'
 import { ITEM_DATA } from '../../data/itemData'
@@ -46,6 +47,7 @@ export default function PokemonCard({ slotIndex }: Props) {
   const { state, dispatch } = useAppState()
   const slot = state.team[slotIndex]
   const isSelected = state.selectedSlot === slotIndex
+  const [copied, setCopied] = useState(false)
   const fetchCC = useFetchCCForSlot()
 
   const effectiveName = getEffectivePokeName(slot)
@@ -136,6 +138,35 @@ export default function PokemonCard({ slotIndex }: Props) {
     const base = (basePokeData.bs as Record<string, number>)[key] || 0
     const mega = (megaPokeData.bs as Record<string, number>)[key] || 0
     return mega > base ? 1 : mega < base ? -1 : 0
+  }
+
+  function handleExportShowdown(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!slot.pokemon) return
+    const exportName = slot.megaForme || slot.pokemon
+    const sps = slot.sps as Record<string, number>
+    const EV_LABELS: Record<string, string> = { hp:'HP', at:'Atk', df:'Def', sa:'SpA', sd:'SpD', sp:'Spe' }
+    const evParts = (['hp','at','df','sa','sd','sp'] as const)
+      .filter(k => (sps[k] ?? 0) > 0)
+      .map(k => `${sps[k]} ${EV_LABELS[k]}`)
+    const natureName = Object.entries(NATURE_DATA).find(
+      ([, [p, m]]) => p === slot.natPlus && m === slot.natMinus && (p !== '' || m !== '')
+    )?.[0] ?? 'Hardy'
+    const itemLine = slot.item && slot.item !== '(No Item)' ? ` @ ${slot.item}` : ''
+    const notes = (state.slotNotes[slotIndex] || '').trim()
+    const notesBlock = notes ? '\n' + notes.split('\n').map(l => `// ${l}`).join('\n') : ''
+    const text = [
+      `${exportName}${itemLine}`,
+      slot.ability ? `Ability: ${slot.ability}` : '',
+      'Level: 50',
+      evParts.length ? `EVs: ${evParts.join(' / ')}` : '',
+      `${natureName} Nature`,
+      ...slot.moves.filter(Boolean).map(m => `- ${m}`),
+    ].filter(Boolean).join('\n') + notesBlock
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
   }
 
   function getBaseStatDiff(key: string): number {
@@ -249,6 +280,16 @@ export default function PokemonCard({ slotIndex }: Props) {
           )
         })}
       </div>
+
+      {slot.pokemon && (
+        <button
+          className={'export-showdown-btn' + (copied ? ' copied' : '')}
+          onClick={handleExportShowdown}
+          title="Exporter vers Pokémon Showdown"
+        >
+          {copied ? '✓ Copié !' : 'Export Showdown'}
+        </button>
+      )}
     </div>
   )
 }

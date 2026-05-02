@@ -4,6 +4,13 @@ import { MOVE_DATA } from '../data/moveData'
 import { getAbilitiesFor } from '../calc/teamHelpers'
 import { MEGA_MAP } from '../data/megaMap'
 
+const SP_TOTAL_MAX = 66
+
+function clampSp(current: Record<string, number>, key: string, value: number): number {
+  const others = Object.entries(current).filter(([k]) => k !== key).reduce((s, [, v]) => s + v, 0)
+  return Math.min(value, Math.max(0, SP_TOTAL_MAX - others))
+}
+
 type CCMoveList = Array<{ move: { name: string } }>
 
 function filterCCMoves(ccMoves: CCMoveList, megaForme: string): CCMoveList {
@@ -61,6 +68,20 @@ export interface AppState {
   filterType: string
   filterKO: '' | 'ohko' | 'ko'
   showLowUsage: boolean
+  favorites: string[]
+  matchupAdvName: string | null
+  slotNotes: Record<number, string>
+  advMoves: Record<string, [string, string, string, string]>
+  advItems: Record<string, string>
+  advAutoSet: Record<string, boolean>
+  advPreAutoSet: Record<string, AdvPreAutoSet>
+}
+
+interface AdvPreAutoSet {
+  ability: string; item: string
+  natPlus: string; natMinus: string
+  sps: Record<string, number>
+  moves: [string, string, string, string]
 }
 
 export const initialState: AppState = {
@@ -77,6 +98,13 @@ export const initialState: AppState = {
   filterType: '',
   filterKO: '',
   showLowUsage: false,
+  favorites: [],
+  matchupAdvName: null,
+  slotNotes: {},
+  advMoves: {},
+  advItems: {},
+  advAutoSet: {},
+  advPreAutoSet: {},
 }
 
 export type Action =
@@ -102,6 +130,13 @@ export type Action =
   | { type: 'SET_FILTER_TYPE'; value: string }
   | { type: 'SET_FILTER_KO'; value: '' | 'ohko' | 'ko' }
   | { type: 'SET_SHOW_LOW_USAGE'; value: boolean }
+  | { type: 'TOGGLE_FAVORITE'; pokeName: string }
+  | { type: 'SET_MATCHUP_ADV'; pokeName: string | null }
+  | { type: 'SET_SLOT_NOTES'; slot: number; notes: string }
+  | { type: 'SET_ADV_MOVE'; pokeName: string; moveIdx: number; value: string }
+  | { type: 'RESET_ADV'; pokeName: string; ability: string; moves: [string, string, string, string] }
+  | { type: 'SET_ADV_ITEM'; pokeName: string; value: string }
+  | { type: 'TOGGLE_ADV_AUTO'; pokeName: string; ccAbility: string; ccItem: string; ccNatPlus: string; ccNatMinus: string; ccSps: Record<string, number> | null; ccMoves: [string, string, string, string] }
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -178,9 +213,10 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'UPDATE_SP': {
       const team = [...state.team]
       const slot = team[action.slot]
+      const clamped = clampSp(slot.sps, action.stat, action.value)
       team[action.slot] = {
         ...slot,
-        sps: { ...slot.sps, [action.stat]: action.value },
+        sps: { ...slot.sps, [action.stat]: clamped },
         ...(slot.useDefaultSet ? { useDefaultSet: false, preDefaultSet: null } : {}),
       }
       return { ...state, team }
@@ -270,11 +306,18 @@ export function appReducer(state: AppState, action: Action): AppState {
 
     case 'SET_ADV_STAT': {
       const prev = state.advStats[action.pokeName] || {}
+      const currentAdvSps: Record<string, number> = {
+
+        sp_hp: prev.sp_hp ?? 0, sp_at: prev.sp_at ?? 0, sp_df: prev.sp_df ?? 0,
+        sp_sa: prev.sp_sa ?? 0, sp_sd: prev.sp_sd ?? 0, sp_sp: prev.sp_sp ?? 0,
+      }
+      const clamped = clampSp(currentAdvSps, action.statKey, action.value)
       return {
         ...state,
+        advAutoSet: { ...(state.advAutoSet ?? {}), [action.pokeName]: false },
         advStats: {
           ...state.advStats,
-          [action.pokeName]: { ...prev, [action.statKey]: action.value }
+          [action.pokeName]: { ...prev, [action.statKey]: clamped }
         }
       }
     }
@@ -286,6 +329,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       if (action.value && updated[other] === action.value) updated[other] = ''
       return {
         ...state,
+        advAutoSet: { ...(state.advAutoSet ?? {}), [action.pokeName]: false },
         advStats: { ...state.advStats, [action.pokeName]: updated }
       }
     }
@@ -294,6 +338,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       const prev = state.advStats[action.pokeName] || {}
       return {
         ...state,
+        advAutoSet: { ...(state.advAutoSet ?? {}), [action.pokeName]: false },
         advStats: {
           ...state.advStats,
           [action.pokeName]: { ...prev, ability: action.value }
@@ -325,6 +370,107 @@ export function appReducer(state: AppState, action: Action): AppState {
 
     case 'SET_SHOW_LOW_USAGE':
       return { ...state, showLowUsage: action.value }
+
+    case 'TOGGLE_FAVORITE': {
+      const already = state.favorites.includes(action.pokeName)
+      return {
+        ...state,
+        favorites: already
+          ? state.favorites.filter(n => n !== action.pokeName)
+          : [...state.favorites, action.pokeName],
+        matchupAdvName: already && state.matchupAdvName === action.pokeName ? null : state.matchupAdvName,
+      }
+    }
+
+    case 'SET_MATCHUP_ADV':
+      return { ...state, matchupAdvName: action.pokeName }
+
+    case 'SET_SLOT_NOTES':
+      return { ...state, slotNotes: { ...state.slotNotes, [action.slot]: action.notes } }
+
+    case 'SET_ADV_MOVE': {
+      const prev = state.advMoves[action.pokeName] ?? ['', '', '', '']
+      const next = [...prev] as [string, string, string, string]
+      next[action.moveIdx] = action.value
+      return {
+        ...state,
+        advAutoSet: { ...(state.advAutoSet ?? {}), [action.pokeName]: false },
+        advMoves: { ...state.advMoves, [action.pokeName]: next },
+      }
+    }
+
+    case 'SET_ADV_ITEM':
+      return {
+        ...state,
+        advItems:   { ...state.advItems,   [action.pokeName]: action.value },
+        advAutoSet: { ...(state.advAutoSet ?? {}), [action.pokeName]: false },
+      }
+
+    case 'TOGGLE_ADV_AUTO': {
+      const isOn = state.advAutoSet?.[action.pokeName]
+      if (isOn) {
+        const snap = state.advPreAutoSet?.[action.pokeName]
+        if (!snap) return { ...state, advAutoSet: { ...state.advAutoSet, [action.pokeName]: false } }
+        return {
+          ...state,
+          advAutoSet:    { ...state.advAutoSet,    [action.pokeName]: false },
+          advPreAutoSet: { ...state.advPreAutoSet, [action.pokeName]: undefined as unknown as AdvPreAutoSet },
+          advStats: {
+            ...state.advStats,
+            [action.pokeName]: {
+              ability: snap.ability,
+              natPlus: snap.natPlus, natMinus: snap.natMinus,
+              sp_hp: snap.sps.hp ?? 0, sp_at: snap.sps.at ?? 0, sp_df: snap.sps.df ?? 0,
+              sp_sa: snap.sps.sa ?? 0, sp_sd: snap.sps.sd ?? 0, sp_sp: snap.sps.sp ?? 0,
+            },
+          },
+          advMoves: { ...state.advMoves, [action.pokeName]: snap.moves },
+          advItems: { ...state.advItems, [action.pokeName]: snap.item },
+        }
+      }
+      // Toggle ON: save snapshot, apply CC
+      const prevAdv = state.advStats[action.pokeName] || {}
+      const snap: AdvPreAutoSet = {
+        ability:  prevAdv.ability  || '',
+        item:     state.advItems[action.pokeName] || '(No Item)',
+        natPlus:  prevAdv.natPlus  || '',
+        natMinus: prevAdv.natMinus || '',
+        sps: {
+          hp: prevAdv.sp_hp ?? 0, at: prevAdv.sp_at ?? 0, df: prevAdv.sp_df ?? 0,
+          sa: prevAdv.sp_sa ?? 0, sd: prevAdv.sp_sd ?? 0, sp: prevAdv.sp_sp ?? 0,
+        },
+        moves: state.advMoves[action.pokeName] ?? ['', '', '', ''],
+      }
+      const newSps = action.ccSps ?? { hp: 0, at: 0, df: 0, sa: 0, sd: 0, sp: 0 }
+      return {
+        ...state,
+        advAutoSet:    { ...state.advAutoSet,    [action.pokeName]: true },
+        advPreAutoSet: { ...state.advPreAutoSet, [action.pokeName]: snap },
+        advStats: {
+          ...state.advStats,
+          [action.pokeName]: {
+            ability:  action.ccAbility,
+            natPlus:  action.ccNatPlus,  natMinus: action.ccNatMinus,
+            sp_hp: newSps.hp ?? 0, sp_at: newSps.at ?? 0, sp_df: newSps.df ?? 0,
+            sp_sa: newSps.sa ?? 0, sp_sd: newSps.sd ?? 0, sp_sp: newSps.sp ?? 0,
+          },
+        },
+        advMoves: { ...state.advMoves, [action.pokeName]: action.ccMoves },
+        advItems: { ...state.advItems, [action.pokeName]: action.ccItem || '(No Item)' },
+      }
+    }
+
+    case 'RESET_ADV': {
+      const resetStats: Partial<AdvOverride> = {
+        sp_hp: 0, sp_at: 0, sp_df: 0, sp_sa: 0, sp_sd: 0, sp_sp: 0,
+        natPlus: '', natMinus: '', ability: action.ability,
+      }
+      return {
+        ...state,
+        advStats: { ...state.advStats, [action.pokeName]: resetStats },
+        advMoves: { ...state.advMoves, [action.pokeName]: action.moves },
+      }
+    }
 
     case 'TOGGLE_DEFAULT_SET': {
       const team = [...state.team]

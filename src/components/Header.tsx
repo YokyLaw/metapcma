@@ -1,6 +1,6 @@
 import '../styles/header.css'
 
-type Tab = 'team' | 'calc'
+export type Tab = 'team' | 'calc' | 'matchup'
 
 interface Props {
   activeTab: Tab
@@ -23,6 +23,12 @@ export default function Header({ activeTab, onTabChange }: Props) {
           onClick={() => onTabChange('calc')}
         >
           Calc
+        </button>
+        <button
+          className={'tab-btn' + (activeTab === 'matchup' ? ' active' : '')}
+          onClick={() => onTabChange('matchup')}
+        >
+          Matchup
         </button>
       </nav>
       <div className="header-badge">REG MA</div>
