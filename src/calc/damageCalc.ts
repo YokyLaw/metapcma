@@ -1,6 +1,6 @@
 import type { TeamSlot, PokeEntry, StatMap, AdvOverride, TableRow, MoveSlotResult } from '../types'
 import { POKE_DATA } from '../data/pokeData'
-import { MOVE_DATA } from '../data/moveData'
+import { getMoveData } from './moveHelpers'
 import { TYPE_EFF } from '../data/typeEff'
 import { ITEM_TYPE_BOOST } from '../data/itemData'
 import { STAT_BOOST_MULTS } from '../data/constants'
@@ -102,8 +102,8 @@ export function buildCalcCtx(
   if (!atkPokeData) return null
 
   const atkItem    = attacker.item || ''
-  const atkAbility = attacker.ability || (atkPokeData.ab as string) || ''
-  const defAbility = overrideStats?.ability || (defenderData.ab as string) || ''
+  const atkAbility = attacker.ability || atkPokeData.ab || ''
+  const defAbility = overrideStats?.ability || defenderData.ab || ''
   const defIsGrounded = isGrounded(defenderData.t1, defenderData.t2 || '', defAbility)
   const atkT1 = atkPokeData.t1, atkT2 = atkPokeData.t2 || ''
   const defT1 = defenderData.t1, defT2 = defenderData.t2 || ''
@@ -126,7 +126,7 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
     attacker, atkStats, weather, terrain,
   } = ctx
 
-  const md = MOVE_DATA[moveName]
+  const md = getMoveData(moveName)
   if (!md || !md.bp || md.bp <= 0) return null
   if (!md.category || md.category === 'Status') return null
 
@@ -331,7 +331,7 @@ export function calcBestMove(
   const ctx = buildCalcCtx(attacker, atkStats, defenderData, overrideStats, weather, terrain)
   if (!ctx) return null
 
-  const selectedMoves = attacker.moves.filter(m => m && MOVE_DATA[m])
+  const selectedMoves = attacker.moves.filter(m => m && getMoveData(m))
   if (selectedMoves.length === 0) return null
 
   let bestResult: CalcResult | null = null
@@ -365,7 +365,7 @@ export function buildTableRow(
 
   const moveResults: (MoveSlotResult | null)[] = attacker.moves.map(moveName => {
     if (!moveName) return null
-    const md = MOVE_DATA[moveName]
+    const md = getMoveData(moveName)
     const baseType = md?.type || 'Normal'
 
     if (!md || md.category === 'Status' || !md.bp || md.bp === 0) {
@@ -391,7 +391,7 @@ export function buildTableRow(
 
   const best = bestResult as CalcResult | null
   const sortMove    = best?.moveName ?? (attacker.moves.find(m => m) ?? '')
-  const sortType    = best?.moveType ?? (MOVE_DATA[sortMove]?.type ?? 'Normal')
+  const sortType    = best?.moveType ?? (getMoveData(sortMove)?.type ?? 'Normal')
   const sortMinPct  = best?.minPct ?? 0
   const sortMaxPct  = best?.maxPct ?? 0
 

@@ -1,10 +1,9 @@
 export interface PokeEntry {
   t1: string
   t2?: string
-  bs: { hp:number; at:number; df:number; sa:number; sd:number; sp:number; sl?:number }
+  bs: { hp:number; at:number; df:number; sa:number; sd:number; sp:number }
   w: number
-  ab: string
-  formes?: string[] | null
+  ab?: string
   [k: string]: unknown
 }
 
@@ -53,6 +52,7 @@ export interface TeamSlot {
   ccMoves: string[] | null
   ccItems: string[] | null
   ccAbilities: string[] | null
+  ccAllAbilities: string[] | null
   ccNature: { natPlus: string; natMinus: string } | null
   ccSps: StatMap | null
   preMegaAbility: string

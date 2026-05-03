@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { NATURE_DATA } from '../../data/constants'
 import { useFetchCCForSlot } from '../../hooks/useCC'
 import { POKE_DATA } from '../../data/pokeData'
 import { ITEM_DATA } from '../../data/itemData'
-import { ABILITY_DATA } from '../../data/abilityData'
 import { STAT_KEYS, STAT_LABELS, NATURE_STATS, NATURE_STAT_LABELS, STAT_BOOST_MULTS } from '../../data/constants'
-import { USAGE_MAP } from '../../data/usageData'
-import { getEffectivePokeName, getAbilitiesFor, spriteUrl, itemSpriteUrl } from '../../calc/teamHelpers'
+import { getUsage, useUsageLoaded } from '../../hooks/useUsageData'
+import { getEffectivePokeName, spriteUrl, itemSpriteUrl } from '../../calc/teamHelpers'
 import type { CCMoveEntry } from '../../calc/teamHelpers'
 import type { CCAbilityEntry } from '../../hooks/useCC'
 import { getStats, getItemStatMult } from '../../calc/statCalc'
-import { getItemDesc } from '../../hooks/useItemDesc'
+import { getItemDesc, getItemList } from '../../hooks/useItemDesc'
 import { getAbilityDesc } from '../../hooks/useAbilityDesc'
 import MegaBar from './MegaBar'
 import MoveSlot from './MoveSlot'
@@ -19,17 +18,8 @@ import SearchSelect from './SearchSelect'
 import type { SearchOption } from './SearchSelect'
 import StatItem from './StatItem'
 
-const POKE_NAMES = Object.keys(POKE_DATA).filter(n => !n.startsWith('Mega ') && n !== 'Aegislash-Shield' && n !== 'Aegislash-Blade').sort((a, b) => {
-  const ua = USAGE_MAP[a] ?? -1
-  const ub = USAGE_MAP[b] ?? -1
-  if (ub !== ua) return ub - ua
-  return a.localeCompare(b)
-})
-
-const BASE_POKE_OPTIONS: SearchOption[] = POKE_NAMES.map(n => {
-  const u = USAGE_MAP[n]
-  return { value: n, label: n, meta: u != null ? `${Math.floor(u * 10) / 10}%` : undefined, image: spriteUrl(n) }
-})
+const POKE_NAMES_BASE = Object.keys(POKE_DATA)
+  .filter(n => !n.startsWith('Mega ') && n !== 'Aegislash-Shield' && n !== 'Aegislash-Blade')
 
 const NAT_PLUS_OPTIONS: SearchOption[] = NATURE_STATS.map(s => ({
   value: s, label: `${NATURE_STAT_LABELS[s]} +10%`,
@@ -56,12 +46,27 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
   const t1 = pokeData?.t1 || ''
   const t2 = pokeData?.t2 || ''
 
+  const usageLoaded = useUsageLoaded()
   const usedPokemon = new Set(
     state.team.filter((_, i) => i !== slotIndex).map(s => s.pokemon).filter(Boolean)
   )
-  const pokeOptions = BASE_POKE_OPTIONS.map(o =>
-    usedPokemon.has(o.value) ? { ...o, disabled: true } : o
-  )
+  const pokeOptions = useMemo(() => {
+    const sorted = [...POKE_NAMES_BASE].sort((a, b) => {
+      const ua = getUsage(a)
+      const ub = getUsage(b)
+      if (ub !== ua) return ub - ua
+      return a.localeCompare(b)
+    })
+    return sorted.map(n => {
+      const u = getUsage(n)
+      return {
+        value: n, label: n,
+        meta: u > 0 ? `${Math.floor(u * 10) / 10}%` : undefined,
+        image: spriteUrl(n),
+        disabled: usedPokemon.has(n),
+      }
+    })
+  }, [usageLoaded, usedPokemon])
 
   useEffect(() => {
     if (slot.pokemon) fetchCC(slotIndex, slot.pokemon)
@@ -88,9 +93,13 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
   const ccItemsMap = ccItemsData
     ? Object.fromEntries(ccItemsData.map(i => [i.item.name, i.percent]))
     : {}
+  const apiItems = getItemList()
+  const baseItems = apiItems
+    ? [...apiItems, ...ITEM_DATA.filter(it => !apiItems.includes(it))]
+    : ITEM_DATA
   const itemList = ccItemNames
-    ? ['(No Item)', ...ccItemNames, ...ITEM_DATA.filter(it => !ccItemNames.includes(it))]
-    : ['(No Item)', ...ITEM_DATA]
+    ? ['(No Item)', ...ccItemNames, ...baseItems.filter(it => !ccItemNames.includes(it))]
+    : ['(No Item)', ...baseItems]
   const usedItems = new Set(
     state.team.filter((_, i) => i !== slotIndex).map(s => s.item).filter(it => it && it !== '(No Item)')
   )
@@ -105,7 +114,8 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
 
   // Ability options — sorted by CC usage if available
   const ccAbilityData = slot.ccAbilities as CCAbilityEntry[] | null
-  const baseAbilities = getAbilitiesFor(effectiveName) || ABILITY_DATA
+  const baseAbilities: string[] = slot.ccAllAbilities ??
+    (effectiveName && POKE_DATA[effectiveName]?.ab ? [POKE_DATA[effectiveName].ab!] : [])
   const abilityOptions: SearchOption[] = ccAbilityData && ccAbilityData.length > 0
     ? ccAbilityData.map(e => ({
         value: e.ability.name,

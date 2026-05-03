@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppState } from '../context/AppContext'
 import { POKE_DATA } from '../data/pokeData'
-import { USAGE_MAP } from '../data/usageData'
+import { getUsage, useUsageLoaded } from './useUsageData'
 import { getStats } from '../calc/statCalc'
 import { getEffectivePokeName } from '../calc/teamHelpers'
 import { buildTableRow } from '../calc/damageCalc'
@@ -10,6 +10,7 @@ import type { TableRow } from '../types'
 export function useCalc() {
   const { state, dispatch } = useAppState()
   const { team, selectedSlot, weather, terrain, advStats } = state
+  const usageLoaded = useUsageLoaded()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const slot = selectedSlot !== null ? team[selectedSlot] : null
@@ -43,7 +44,7 @@ export function useCalc() {
         if (!defData?.bs) continue
         const row = buildTableRow(slot, atkStats, defName, defData, advStats, weather, terrain)
         if (!row) continue
-        row.usage = USAGE_MAP[defName] ?? -1
+        row.usage = getUsage(defName)
         tableData.push(row)
       }
 
@@ -67,5 +68,6 @@ export function useCalc() {
     weather,
     terrain,
     advStats,
+    usageLoaded,
   ])
 }

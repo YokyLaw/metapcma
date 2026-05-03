@@ -2,9 +2,8 @@
 
 import { useMemo } from 'react'
 import { useAppState } from '../../context/AppContext'
-import { MOVE_DATA } from '../../data/moveData'
-import { getMoveDesc } from '../../hooks/useMoveDesc'
-import { getMoveMeta } from '../../hooks/useMoveIndex'
+import { getMoveDesc } from '../../hooks/useMoveMeta'
+import { getMoveData } from '../../calc/moveHelpers'
 import { buildCalcCtx, calcOneMoveResult } from '../../calc/damageCalc'
 import { getStats } from '../../calc/statCalc'
 import { POKE_DATA } from '../../data/pokeData'
@@ -52,9 +51,7 @@ export default function MoveSlot({ slotIndex, moveIdx, value, moves }: Props) {
     return min === max ? `${min}%` : `${min}~${max}%`
   }
 
-  const staticMd = value ? MOVE_DATA[value] : null
-  const ccMeta = value && !staticMd ? getMoveMeta(value) : null
-  const md = staticMd ?? ccMeta ?? null
+  const md = value ? getMoveData(value) : null
   const dotColor = md ? `var(--${md.type})` : 'var(--muted)'
 
   const options: SearchOption[] = moves.map(m => ({

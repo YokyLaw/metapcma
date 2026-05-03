@@ -1,16 +1,17 @@
 import { useRef, useState, useMemo } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { POKE_DATA } from '../../data/pokeData'
-import { MOVE_DATA } from '../../data/moveData'
+import { getMoveData } from '../../calc/moveHelpers'
 import { ITEM_DATA } from '../../data/itemData'
-import { USAGE_MAP } from '../../data/usageData'
+import { getUsage, useUsageLoaded } from '../../hooks/useUsageData'
 import { NATURE_DATA, NATURE_STATS, NATURE_STAT_LABELS, STAT_KEYS, STAT_LABELS, BOOST_OPTIONS, STAT_BOOST_MULTS } from '../../data/constants'
-import { spriteUrl, itemSpriteUrl, getAbilitiesFor, getBaseNameForCC, getMegaOptions, getEffectivePokeName } from '../../calc/teamHelpers'
+import { spriteUrl, itemSpriteUrl, getBaseNameForCC, getMegaOptions, getEffectivePokeName } from '../../calc/teamHelpers'
 import { calcStat, getStats } from '../../calc/statCalc'
 import { buildCalcCtx, calcOneMoveResult } from '../../calc/damageCalc'
 import type { CalcCtx } from '../../calc/damageCalc'
 import { getAbilityDesc } from '../../hooks/useAbilityDesc'
-import { getMoveDesc } from '../../hooks/useMoveDesc'
+import { getItemList } from '../../hooks/useItemDesc'
+import { getMoveDesc } from '../../hooks/useMoveMeta'
 import { useAdvCC } from '../../hooks/useAdvCC'
 import SearchSelect from '../TeamPanel/SearchSelect'
 import type { SearchOption } from '../TeamPanel/SearchSelect'
@@ -128,7 +129,7 @@ interface AdvMoveSlotProps {
 
 function AdvMoveSlot({ pokeName, moveIdx, value, options, calcCtx }: AdvMoveSlotProps) {
   const { dispatch } = useAppState()
-  const md = value ? MOVE_DATA[value] : null
+  const md = value ? getMoveData(value) : null
   const dotColor = md ? `var(--${md.type})` : 'var(--muted)'
 
   function getDamage(moveName: string): string | undefined {
@@ -158,17 +159,6 @@ function AdvMoveSlot({ pokeName, moveIdx, value, options, calcCtx }: AdvMoveSlot
 
 const POKE_NAMES_ADV = Object.keys(POKE_DATA)
   .filter(n => !n.startsWith('Mega ') && n !== 'Aegislash-Shield' && n !== 'Aegislash-Blade')
-  .sort((a, b) => {
-    const ua = USAGE_MAP[a] ?? -1
-    const ub = USAGE_MAP[b] ?? -1
-    if (ub !== ua) return ub - ua
-    return a.localeCompare(b)
-  })
-
-const ADV_POKE_OPTIONS: SearchOption[] = POKE_NAMES_ADV.map(n => {
-  const u = USAGE_MAP[n]
-  return { value: n, label: n, meta: u != null ? `${(Math.floor(u * 10) / 10)}%` : undefined, image: spriteUrl(n) }
-})
 
 const NAT_PLUS_OPTIONS:  SearchOption[] = NATURE_STATS.map(s => ({ value: s, label: `${NATURE_STAT_LABELS[s]} +10%` }))
 const NAT_MINUS_OPTIONS: SearchOption[] = NATURE_STATS.map(s => ({ value: s, label: `${NATURE_STAT_LABELS[s]} -10%` }))
@@ -176,8 +166,22 @@ const NAT_MINUS_OPTIONS: SearchOption[] = NATURE_STATS.map(s => ({ value: s, lab
 export default function AdvCard() {
   const { state, dispatch } = useAppState()
   const pokeName = state.matchupAdvName || ''
-  const { ccAbilities, ccMoves, ccItems, ccNature, ccSps, isLoaded } = useAdvCC(pokeName)
+  const { ccAbilities, ccMoves, ccItems, ccNature, ccSps, allAbilities, isLoaded } = useAdvCC(pokeName)
   const [copied, setCopied] = useState(false)
+
+  const usageLoaded = useUsageLoaded()
+  const advPokeOptions = useMemo(() => {
+    const sorted = [...POKE_NAMES_ADV].sort((a, b) => {
+      const ua = getUsage(a)
+      const ub = getUsage(b)
+      if (ub !== ua) return ub - ua
+      return a.localeCompare(b)
+    })
+    return sorted.map(n => {
+      const u = getUsage(n)
+      return { value: n, label: n, meta: u > 0 ? `${Math.floor(u * 10) / 10}%` : undefined, image: spriteUrl(n) }
+    })
+  }, [usageLoaded])
 
   const baseName    = getBaseNameForCC(pokeName)
   const isMegaRow   = pokeName !== baseName
@@ -222,7 +226,7 @@ export default function AdvCard() {
     const pseudoSlot: Partial<TeamSlot> = {
       pokemon: isMegaRow ? baseName : pokeName,
       megaForme: isMegaRow ? pokeName : '',
-      ability: advAbility || (advPokeData.ab as string) || '',
+      ability: advAbility || advPokeData.ab || '',
       item: advItem,
       boosts: advBoosts as Record<string, number>,
     }
@@ -244,8 +248,8 @@ export default function AdvCard() {
     state.weather, state.terrain,
   ])
 
-  const megaOwnAbilities  = isMegaRow ? (getAbilitiesFor(pokeName) ?? []) : []
-  const allKnownAbilities = isMegaRow ? megaOwnAbilities : (getAbilitiesFor(pokeName) ?? [])
+  const megaOwnAbilities  = isMegaRow ? (POKE_DATA[pokeName]?.ab ? [POKE_DATA[pokeName].ab!] : []) : []
+  const allKnownAbilities = isMegaRow ? megaOwnAbilities : allAbilities
 
   function fmt(pct: number) { return (Math.floor(pct * 10) / 10).toFixed(1) }
 
@@ -267,19 +271,19 @@ export default function AdvCard() {
   const currentAbility = advAbility
     || (isMegaRow ? megaOwnAbilities[0] : ccAbilities[0]?.ability?.name)
     || allKnownAbilities[0]
-    || (advPokeData?.ab as string)
+    || advPokeData?.ab
     || ''
 
   const topMoves = (() => {
     if (pokeName === 'Mega Charizard X') {
       const protect     = ccMoves.filter(m => m.move.name === 'Protect')
-      const offensive   = ccMoves.filter(m => MOVE_DATA[m.move.name]?.category === 'Physical')
+      const offensive   = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Physical')
       const dragonDance = ccMoves.filter(m => m.move.name === 'Dragon Dance')
       return [...protect, ...offensive, ...dragonDance].slice(0, 4)
     }
     if (pokeName === 'Mega Charizard Y') {
-      const offensive = ccMoves.filter(m => MOVE_DATA[m.move.name]?.category === 'Special')
-      const status    = ccMoves.filter(m => MOVE_DATA[m.move.name]?.category === 'Status')
+      const offensive = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Special')
+      const status    = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Status')
       return [...offensive, ...status].slice(0, 4)
     }
     return ccMoves.slice(0, 4)
@@ -294,9 +298,13 @@ export default function AdvCard() {
   const megaOptions = getMegaOptions(baseName)
   const hasCCData   = ccAbilities.length > 0 || ccMoves.length > 0
 
+  const apiItems = getItemList()
+  const allItems = apiItems
+    ? [...apiItems, ...ITEM_DATA.filter(it => !apiItems.includes(it))]
+    : ITEM_DATA
   const itemOptions: SearchOption[] = [
     { value: '(No Item)', label: '(No Item)' },
-    ...ITEM_DATA.map(it => ({ value: it, label: it, image: itemSpriteUrl(it) })),
+    ...allItems.map(it => ({ value: it, label: it, image: itemSpriteUrl(it) })),
   ]
 
   function handleApplyCommonSet() {
@@ -393,7 +401,7 @@ export default function AdvCard() {
         <div className="card-selects-full">
           <SearchSelect
             value={baseName}
-            options={ADV_POKE_OPTIONS}
+            options={advPokeOptions}
             onChange={name => dispatch({ type: 'SET_MATCHUP_ADV', pokeName: name })}
             placeholder="— Choisir adversaire —"
             maxUnfiltered={60}

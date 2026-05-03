@@ -23,7 +23,17 @@
       "Bash(npx tsx -e ' *)",
       "Bash(read name *)",
       "Bash(rtk grep *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(rtk ls *)",
+      "Bash(powershell -Command \"Get-ChildItem -Force | Select-Object Name\")",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse src, public -Include '*.json','*.ts','*.tsx','*.js','*.jsx' -ErrorAction SilentlyContinue | Select-Object FullName\")",
+      "Bash(powershell -Command \"Get-Content src -Recurse -Include '*.ts','*.tsx' | Select-String 'from.*data/' | head -30\")",
+      "Bash(powershell -Command \"ls -Force src/data/\")",
+      "Bash(rtk tree *)",
+      "Bash(powershell -Command \"ls -Recurse -Directory src | select -ExpandProperty Name\")",
+      "Bash(rtk tsc *)",
+      "Bash(rtk wc *)",
+      "Bash(Remove-Item *)"
     ]
   }
 }

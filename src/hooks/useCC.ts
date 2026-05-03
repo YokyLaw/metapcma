@@ -51,7 +51,7 @@ function parseTopSpread(spreads: CCSpreadEntry[]): { nature: { natPlus: string; 
 
 interface CCApiResponse {
   usages?: CCUsage[]
-  pokemon?: { id?: number; usages?: CCUsage[] }
+  pokemon?: { id?: number; usages?: CCUsage[]; ability_1?: string; ability_2?: string; ability_hidden?: string }
   id?: number
 }
 
@@ -72,11 +72,14 @@ async function fetchCC(name: string): Promise<{
   ccAbilities: CCAbilityEntry[] | null
   ccNature: { natPlus: string; natMinus: string } | null
   ccSps: StatMap | null
+  allAbilities: string[]
 }> {
-  const empty = { ccMoves: null, ccItems: null, ccAbilities: null, ccNature: null, ccSps: null }
+  const empty = { ccMoves: null, ccItems: null, ccAbilities: null, ccNature: null, ccSps: null, allAbilities: [] }
   try {
     const res = await fetch('/api/cc/' + encodeURIComponent(name))
     const json: CCApiResponse = await res.json()
+    const allAbilities = [json.pokemon?.ability_1, json.pokemon?.ability_2, json.pokemon?.ability_hidden]
+      .filter((a): a is string => !!a)
     const usages = json.usages ?? json.pokemon?.usages
     const championsUsage = usages?.find(u => u.provider === 'champions')
 
@@ -88,19 +91,19 @@ async function fetchCC(name: string): Promise<{
         ccMoves:     championsUsage.usageMoves ?? null,
         ccItems:     championsUsage.usageItems ?? null,
         ccAbilities: championsUsage.usageAbilities ?? null,
-        ccNature, ccSps,
+        ccNature, ccSps, allAbilities,
       }
     }
 
     const id = json.pokemon?.id ?? json.id
-    if (!id) return empty
+    if (!id) return { ...empty, allAbilities }
 
     const movesRes = await fetch('/api/cc/moves/' + id)
     const movesData: unknown = await movesRes.json()
     const names = parseMoveNames(movesData)
     const ccMoves: CCMoveEntry[] = names.map(n => ({ move: { name: n }, percent: 0 }))
 
-    return { ...empty, ccMoves: ccMoves.length > 0 ? ccMoves : null }
+    return { ...empty, allAbilities, ccMoves: ccMoves.length > 0 ? ccMoves : null }
   } catch {
     return empty
   }
@@ -111,7 +114,7 @@ export function useFetchCCForSlot() {
 
   return function fetchForSlot(slotIdx: number, pokeName: string) {
     const name = getBaseNameForCC(pokeName)
-    fetchCC(name).then(({ ccMoves, ccItems, ccAbilities, ccNature, ccSps }) => {
+    fetchCC(name).then(({ ccMoves, ccItems, ccAbilities, ccNature, ccSps, allAbilities }) => {
       dispatch({
         type: 'SET_CC_DATA',
         slot: slotIdx,
@@ -121,6 +124,7 @@ export function useFetchCCForSlot() {
         ccAbilities,
         ccNature,
         ccSps,
+        allAbilities,
       })
     })
   }

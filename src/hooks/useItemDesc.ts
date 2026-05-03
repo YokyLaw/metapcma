@@ -10,6 +10,7 @@ for (const megas of Object.values(MEGA_MAP)) {
 }
 
 let cache: Record<string, string> | null = null
+let nameCache: string[] | null = null
 let fetchPromise: Promise<void> | null = null
 
 export function prefetchItemDescs(): Promise<void> {
@@ -18,12 +19,20 @@ export function prefetchItemDescs(): Promise<void> {
     .then(r => r.json())
     .then((data: { items?: CCItem[] }) => {
       cache = {}
+      nameCache = []
       for (const item of data.items ?? []) {
-        if (item.name && item.description) cache[item.name] = item.description
+        if (item.name) {
+          nameCache.push(item.name)
+          if (item.description) cache[item.name] = item.description
+        }
       }
     })
-    .catch(() => { cache = {} })
+    .catch(() => { cache = {}; nameCache = [] })
   return fetchPromise
+}
+
+export function getItemList(): string[] | null {
+  return nameCache
 }
 
 export function getItemDesc(name: string): string | undefined {

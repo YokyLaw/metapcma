@@ -7,8 +7,8 @@ import Header from './components/Header'
 import type { Tab } from './components/Header'
 import { prefetchItemDescs } from './hooks/useItemDesc'
 import { prefetchAbilityDescs } from './hooks/useAbilityDesc'
-import { prefetchMoveDescs } from './hooks/useMoveDesc'
-import { prefetchMoveIndex } from './hooks/useMoveIndex'
+import { prefetchMoveMeta } from './hooks/useMoveMeta'
+import { prefetchUsageData } from './hooks/useUsageData'
 import CalcSidebar from './components/CalcSidebar'
 import ResultsPanel from './components/ResultsPanel/ResultsPanel'
 import FieldBar from './components/FieldBar'
@@ -17,7 +17,7 @@ import MatchupTab from './components/MatchupTab/MatchupTab'
 
 function AppInner() {
   useCalc()
-  useEffect(() => { prefetchItemDescs(); prefetchAbilityDescs(); prefetchMoveDescs(); prefetchMoveIndex() }, [])
+  useEffect(() => { prefetchItemDescs(); prefetchAbilityDescs(); prefetchMoveMeta(); prefetchUsageData() }, [])
   const [tab, setTab] = useState<Tab>('team')
 
   return (

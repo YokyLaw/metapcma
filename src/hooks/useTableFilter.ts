@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { TableRow, SortKey } from '../types'
-import { USAGE_MAP, USAGE_THRESHOLD } from '../data/usageData'
+import { USAGE_THRESHOLD } from './useUsageData'
 
 interface FilterState {
   sortKey: SortKey
@@ -17,8 +17,7 @@ export function useTableFilter(tableData: TableRow[], filters: FilterState): Tab
 
     const filtered = tableData.filter(r => {
       if (!showLowUsage) {
-        const usage = USAGE_MAP[r.name]
-        if (usage === undefined || usage <= USAGE_THRESHOLD) return false
+        if (r.usage < 0 || r.usage <= USAGE_THRESHOLD) return false
       }
       if (filterSearch && !r.name.toLowerCase().includes(filterSearch.toLowerCase())) return false
       if (filterType && r.type1 !== filterType && r.type2 !== filterType) return false
@@ -29,9 +28,7 @@ export function useTableFilter(tableData: TableRow[], filters: FilterState): Tab
 
     return [...filtered].sort((a, b) => {
       if (sortKey === 'usage') {
-        const ua = USAGE_MAP[a.name] ?? -1
-        const ub = USAGE_MAP[b.name] ?? -1
-        return ub - ua
+        return b.usage - a.usage
       }
       const av = (a as unknown as Record<string, unknown>)[sortKey]
       const bv = (b as unknown as Record<string, unknown>)[sortKey]

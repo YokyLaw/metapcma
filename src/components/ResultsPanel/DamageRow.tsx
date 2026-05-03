@@ -1,10 +1,9 @@
 import { useEffect } from 'react'
 import { useAppState } from '../../context/AppContext'
-import { USAGE_MAP } from '../../data/usageData'
 import { NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
-import { spriteUrl, getEffectivePokeName, getAbilitiesFor, getBaseNameForCC } from '../../calc/teamHelpers'
+import { spriteUrl, getEffectivePokeName, getBaseNameForCC } from '../../calc/teamHelpers'
 import { POKE_DATA } from '../../data/pokeData'
-import { MOVE_DATA } from '../../data/moveData'
+import { getMoveData } from '../../calc/moveHelpers'
 import { calcStat, getStats } from '../../calc/statCalc'
 import { buildCalcCtx, calcOneMoveResult } from '../../calc/damageCalc'
 import { getAbilityDesc } from '../../hooks/useAbilityDesc'
@@ -57,7 +56,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
   const isMegaRow = row.name !== baseName
 
   const { state, dispatch } = useAppState()
-  const { ccAbilities, ccMoves } = useAdvCC(row.name)
+  const { ccAbilities, ccMoves, allAbilities } = useAdvCC(row.name)
 
   // Set default ability when CC data first loads
   useEffect(() => {
@@ -69,8 +68,8 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
 
   const advPokeData = POKE_DATA[row.name]
 
-  const megaOwnAbilities = isMegaRow ? (getAbilitiesFor(row.name) ?? []) : []
-  const allKnownAbilities = isMegaRow ? megaOwnAbilities : (getAbilitiesFor(row.name) ?? [])
+  const megaOwnAbilities = isMegaRow ? (POKE_DATA[row.name]?.ab ? [POKE_DATA[row.name].ab!] : []) : []
+  const allKnownAbilities = isMegaRow ? megaOwnAbilities : allAbilities
 
   const abilityOptions: SearchOption[] = isMegaRow
     ? megaOwnAbilities.map(a => ({ value: a, label: a }))
@@ -90,10 +89,10 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
   const currentAbility = row.advAbility
     || (isMegaRow ? megaOwnAbilities[0] : ccAbilities[0]?.ability?.name)
     || allKnownAbilities[0]
-    || (advPokeData?.ab as string)
+    || advPokeData?.ab
     || ''
 
-  const usage = USAGE_MAP[row.name]
+  const usage = row.usage > 0 ? row.usage : undefined
   const isFavorite = state.favorites.includes(row.name)
 
   const spMap: Record<string, number> = {
@@ -133,13 +132,13 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
   const topMoves = (() => {
     if (row.name === 'Mega Charizard X') {
       const protect     = ccMoves.filter(m => m.move.name === 'Protect')
-      const offensive   = ccMoves.filter(m => MOVE_DATA[m.move.name]?.category === 'Physical')
+      const offensive   = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Physical')
       const dragonDance = ccMoves.filter(m => m.move.name === 'Dragon Dance')
       return [...protect, ...offensive, ...dragonDance].slice(0, 4)
     }
     if (row.name === 'Mega Charizard Y') {
-      const offensive = ccMoves.filter(m => MOVE_DATA[m.move.name]?.category === 'Special')
-      const status    = ccMoves.filter(m => MOVE_DATA[m.move.name]?.category === 'Status')
+      const offensive = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Special')
+      const status    = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Status')
       return [...offensive, ...status].slice(0, 4)
     }
     return ccMoves.slice(0, 4)
@@ -149,13 +148,13 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
   const advAtkStats = advPokeData ? getStats(advPokeData, advAtkSps, row.advNatPlus || '', row.advNatMinus || '') : null
   const advFakeSlot: TeamSlot = {
     id: -1, pokemon: row.name, megaForme: '',
-    ability: currentAbility || (advPokeData?.ab as string) || '',
+    ability: currentAbility || advPokeData?.ab || '',
     item: state.advItems[row.name] || '(No Item)',
     natPlus: row.advNatPlus || '', natMinus: row.advNatMinus || '',
     sps: advAtkSps,
     boosts: { at: 0, df: 0, sa: 0, sd: 0, sp: 0 },
     moves: ['', '', '', ''],
-    ccMoves: null, ccItems: null, ccAbilities: null,
+    ccMoves: null, ccItems: null, ccAbilities: null, ccAllAbilities: null,
     ccNature: null, ccSps: null,
     preMegaAbility: '', preMegaItem: '',
     useDefaultSet: false, preDefaultSet: null,
@@ -171,12 +170,12 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
     : null
 
   const defSlots: (MoveSlotResult | null)[] = topMoves.map(m => {
-    const moveType = MOVE_DATA[m.move.name]?.type ?? 'Normal'
+    const moveType = getMoveData(m.move.name)?.type ?? 'Normal'
     const calc = revCtx ? calcOneMoveResult(m.move.name, revCtx) : null
     return {
       move: m.move.name,
       moveType,
-      immune: revCtx !== null && calc === null && (MOVE_DATA[m.move.name]?.bp ?? 0) > 0,
+      immune: revCtx !== null && calc === null && (getMoveData(m.move.name)?.bp ?? 0) > 0,
       calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct, isOHKO: calc.minPct >= 100, isKO: calc.maxPct >= 100 } : null,
     }
   })

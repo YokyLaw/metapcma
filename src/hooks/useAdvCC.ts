@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { MOVE_DATA } from '../data/moveData'
+import { getMoveData } from '../calc/moveHelpers'
 import { NATURE_DATA } from '../data/constants'
 import { getBaseNameForCC } from '../calc/teamHelpers'
 
@@ -8,17 +8,18 @@ export interface CCMove    { move: { name: string };    percent: number }
 export interface CCItem    { item:  { name: string };   percent: number }
 
 export interface AdvCCData {
-  ccAbilities: CCAbility[]
-  ccMoves:     CCMove[]
-  ccItems:     CCItem[]
-  ccNature:    { natPlus: string; natMinus: string } | null
-  ccSps:       Record<string, number> | null
+  ccAbilities:  CCAbility[]
+  ccMoves:      CCMove[]
+  ccItems:      CCItem[]
+  ccNature:     { natPlus: string; natMinus: string } | null
+  ccSps:        Record<string, number> | null
+  allAbilities: string[]
 }
 
 const cache    = new Map<string, AdvCCData>()
 const fetching = new Set<string>()
 
-const EMPTY: AdvCCData = { ccAbilities: [], ccMoves: [], ccItems: [], ccNature: null, ccSps: null }
+const EMPTY: AdvCCData = { ccAbilities: [], ccMoves: [], ccItems: [], ccNature: null, ccSps: null, allAbilities: [] }
 
 function parseSpread(spreads: unknown[]): { natPlus: string; natMinus: string } | null {
   const top = spreads[0] as Record<string, unknown> | undefined
@@ -60,19 +61,28 @@ export function useAdvCC(pokeName: string): AdvCCResult {
     fetch(`/api/cc/${encodeURIComponent(baseName)}`)
       .then(r => r.json())
       .then(raw => {
+        const allAbilities = [raw?.pokemon?.ability_1, raw?.pokemon?.ability_2, raw?.pokemon?.ability_hidden]
+          .filter((a): a is string => !!a)
         const usages = raw?.usages ?? raw?.pokemon?.usages
         const ch = usages?.find((u: { provider: string }) => u.provider === 'champions')
-        if (!ch) return
+        if (!ch) {
+          if (allAbilities.length) {
+            const result: AdvCCData = { ...EMPTY, allAbilities }
+            cache.set(pokeName, result)
+            setData(result)
+          }
+          return
+        }
 
         const allMoves: CCMove[] = (ch.usageMoves ?? []).filter(
-          (m: CCMove) => !!MOVE_DATA[m.move?.name ?? '']
+          (m: CCMove) => !!getMoveData(m.move?.name ?? '')
         )
         const ccAbilities: CCAbility[] = isMegaRow ? [] : (ch.usageAbilities ?? [])
         const ccItems:     CCItem[]    = ch.usageItems ?? []
         const ccNature  = ch.usageSpreads?.length ? parseSpread(ch.usageSpreads) : null
         const ccSps     = ch.usageSpreads?.length ? parseSps(ch.usageSpreads)    : null
 
-        const result: AdvCCData = { ccAbilities, ccMoves: allMoves, ccItems, ccNature, ccSps }
+        const result: AdvCCData = { ccAbilities, ccMoves: allMoves, ccItems, ccNature, ccSps, allAbilities }
         cache.set(pokeName, result)
         setData(result)
       })

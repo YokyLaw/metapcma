@@ -13,8 +13,6 @@ export const NATURE_STAT_LABELS: Record<string, string> = { at:'ATK', df:'DEF', 
 
 export const STAT_KEYS = ['hp','at','df','sa','sd','sp'] as const
 export const STAT_LABELS = ['HP','ATK','DEF','SpA','SpD','SPE'] as const
-export type StatKey = typeof STAT_KEYS[number]
-export type BoostKey = 'at'|'df'|'sa'|'sd'|'sp'
 
 export const STAT_BOOST_MULTS: Record<string, number> = {
   '-6': 0.25, '-5': 0.2858, '-4': 0.3333, '-3': 0.40,
@@ -24,7 +22,6 @@ export const STAT_BOOST_MULTS: Record<string, number> = {
 }
 
 export const BOOST_OPTIONS = ['+6','+5','+4','+3','+2','+1','0','-1','-2','-3','-4','-5','-6'] as const
-export type BoostOption = typeof BOOST_OPTIONS[number]
 
 export const WEATHER_OPTIONS = [
   { val: '', label: 'Neutre' },
