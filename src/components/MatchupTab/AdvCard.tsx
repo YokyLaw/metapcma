@@ -29,7 +29,7 @@ import { extractName } from "../../hooks/useCC";
 import { useAdvCC } from "../../hooks/useAdvCC";
 import SearchSelect from "../TeamPanel/SearchSelect";
 import type { SearchOption } from "../TeamPanel/SearchSelect";
-import type { StatMap, AdvOverride, TeamSlot } from "../../types";
+import type { StatMap, AdvOverride, TeamSlot, BoostMap } from "../../types";
 
 type AdvStatKey = "sp_hp" | "sp_df" | "sp_sd" | "sp_sp" | "sp_at" | "sp_sa";
 const STAT_KEY_MAP: Record<string, AdvStatKey> = {
@@ -354,9 +354,10 @@ export default function AdvCard() {
   };
   const advNatPlus = adv.natPlus || "";
   const advNatMinus = adv.natMinus || "";
-  const advAbility = extractName((adv.ability as unknown) || '');
+  const advAbility = extractName((adv.ability as unknown) || "");
   const advMoves = state.advMoves[pokeName] ?? ["", "", "", ""];
-  const advItem = extractName((state.advItems[pokeName] as unknown) || '') || "(No Item)";
+  const advItem =
+    extractName((state.advItems[pokeName] as unknown) || "") || "(No Item)";
 
   const advAsAtkCtx = useMemo(() => {
     if (!advPokeData || !teamSlot?.pokemon) return null;
@@ -377,7 +378,7 @@ export default function AdvCard() {
       megaForme: isMegaRow ? pokeName : "",
       ability: advAbility || advPokeData.ab || "",
       item: advItem,
-      boosts: advBoosts as Record<string, number>,
+      boosts: advBoosts as BoostMap,
     };
     const teamOverride: Partial<AdvOverride> = {
       sp_hp: teamSlot.sps.hp ?? 0,
@@ -429,9 +430,9 @@ export default function AdvCard() {
     state.terrain,
   ]);
 
-  const megaOwnAbility = isMegaRow ? (POKE_DATA[pokeName]?.ab ?? '') : '';
+  const megaOwnAbility = isMegaRow ? (POKE_DATA[pokeName]?.ab ?? "") : "";
   const megaOwnAbilities = useMemo(
-    () => isMegaRow && megaOwnAbility ? [megaOwnAbility] : [],
+    () => (isMegaRow && megaOwnAbility ? [megaOwnAbility] : []),
     [isMegaRow, megaOwnAbility],
   );
   const allKnownAbilities = isMegaRow ? megaOwnAbilities : allAbilities;
@@ -448,7 +449,9 @@ export default function AdvCard() {
         description: getAbilityDesc(a),
       }));
     }
-    const ccSet = new Set(ccAbilities.map((c) => extractName(c.ability.name as unknown)));
+    const ccSet = new Set(
+      ccAbilities.map((c) => extractName(c.ability.name as unknown)),
+    );
     const extra = allAbilities
       .filter((a) => !ccSet.has(a))
       .map((a) => ({ value: a, label: a, description: getAbilityDesc(a) }));
@@ -458,7 +461,10 @@ export default function AdvCard() {
         return {
           value: abilityName,
           label: abilityName,
-          meta: c.percent > 0 ? `${(Math.floor(c.percent * 10) / 10).toFixed(1)}%` : undefined,
+          meta:
+            c.percent > 0
+              ? `${(Math.floor(c.percent * 10) / 10).toFixed(1)}%`
+              : undefined,
           description: getAbilityDesc(abilityName),
         };
       }),
@@ -468,7 +474,9 @@ export default function AdvCard() {
 
   const currentAbility =
     advAbility ||
-    (isMegaRow ? megaOwnAbilities[0] : extractName(ccAbilities[0]?.ability?.name as unknown)) ||
+    (isMegaRow
+      ? megaOwnAbilities[0]
+      : extractName(ccAbilities[0]?.ability?.name as unknown)) ||
     allKnownAbilities[0] ||
     advPokeData?.ab ||
     "";
@@ -500,15 +508,16 @@ export default function AdvCard() {
   }, [pokeName, ccMoves]);
 
   const moveOptions: SearchOption[] = useMemo(
-    () => ccMoves.map((m) => {
-      const moveName = extractName(m.move.name as unknown);
-      return {
-        value: moveName,
-        label: moveName,
-        meta: m.percent > 0 ? `${fmt(m.percent)}%` : undefined,
-        description: getMoveDesc(moveName),
-      };
-    }),
+    () =>
+      ccMoves.map((m) => {
+        const moveName = extractName(m.move.name as unknown);
+        return {
+          value: moveName,
+          label: moveName,
+          meta: m.percent > 0 ? `${fmt(m.percent)}%` : undefined,
+          description: getMoveDesc(moveName),
+        };
+      }),
     [ccMoves],
   );
 
@@ -517,7 +526,9 @@ export default function AdvCard() {
 
   const itemOptions: SearchOption[] = useMemo(() => {
     const allItems = getItemList();
-    const ccItemNameSet = new Set(ccItems.map((i) => extractName(i.item.name as unknown)));
+    const ccItemNameSet = new Set(
+      ccItems.map((i) => extractName(i.item.name as unknown)),
+    );
     return [
       { value: "(No Item)", label: "(No Item)" },
       ...ccItems.map((i) => {
@@ -538,8 +549,11 @@ export default function AdvCard() {
   function handleApplyCommonSet() {
     const topAbility = isMegaRow
       ? megaOwnAbilities[0] || ""
-      : extractName(ccAbilities[0]?.ability?.name as unknown) || allKnownAbilities[0] || "";
-    const topItem = extractName(ccItems[0]?.item?.name as unknown) || "(No Item)";
+      : extractName(ccAbilities[0]?.ability?.name as unknown) ||
+        allKnownAbilities[0] ||
+        "";
+    const topItem =
+      extractName(ccItems[0]?.item?.name as unknown) || "(No Item)";
     const moves4: [string, string, string, string] = ["", "", "", ""];
     topMoves.slice(0, 4).forEach((m, i) => {
       moves4[i] = extractName(m.move.name as unknown);
