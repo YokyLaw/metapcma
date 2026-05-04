@@ -166,7 +166,7 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
   function handleExportShowdown(e: React.MouseEvent) {
     e.stopPropagation()
     if (!slot.pokemon) return
-    const exportName = slot.megaForme || slot.pokemon
+    const exportName = slot.pokemon
     const sps = slot.sps as Record<string, number>
     const EV_LABELS: Record<string, string> = { hp:'HP', at:'Atk', df:'Def', sa:'SpA', sd:'SpD', sp:'Spe' }
     const evParts = (['hp','at','df','sa','sd','sp'] as const)
@@ -189,6 +189,52 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
+
+  function handleImportShowdown(e: React.MouseEvent) {
+    e.stopPropagation()
+    navigator.clipboard.readText().then(text => {
+      const lines = text.trim().split('\n').map(l => l.trim()).filter(l => !l.startsWith('//'))
+      if (!lines.length) return
+      const firstLine = lines[0]
+      const atIdx = firstLine.indexOf(' @ ')
+      const pokeName = (atIdx >= 0 ? firstLine.slice(0, atIdx) : firstLine).trim()
+      const item = atIdx >= 0 ? firstLine.slice(atIdx + 3).trim() : '(No Item)'
+      if (!POKE_DATA[pokeName]) return
+      const EV_REVERSE: Record<string, string> = { HP: 'hp', Atk: 'at', Def: 'df', SpA: 'sa', SpD: 'sd', Spe: 'sp' }
+      let ability = ''
+      let natPlusVal = ''
+      let natMinusVal = ''
+      const evMap: Record<string, number> = {}
+      const moves: string[] = []
+      for (const line of lines.slice(1)) {
+        if (line.startsWith('Ability: ')) {
+          ability = line.slice(9).trim()
+        } else if (line.startsWith('EVs: ')) {
+          line.slice(5).split('/').forEach(part => {
+            const m = part.trim().match(/^(\d+)\s+(.+)$/)
+            if (m) { const stat = EV_REVERSE[m[2].trim()]; if (stat) evMap[stat] = parseInt(m[1]) }
+          })
+        } else if (line.endsWith(' Nature')) {
+          const natureName = line.slice(0, -7).trim()
+          const found = Object.entries(NATURE_DATA).find(([name]) => name === natureName)
+          if (found) { natPlusVal = found[1][0]; natMinusVal = found[1][1] }
+        } else if (line.startsWith('- ')) {
+          moves.push(line.slice(2).trim())
+        }
+      }
+      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'pokemon', value: pokeName })
+      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'item', value: item })
+      if (ability) dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'ability', value: ability })
+      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'natPlus', value: natPlusVal })
+      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'natMinus', value: natMinusVal })
+      ;(['hp', 'at', 'df', 'sa', 'sd', 'sp'] as const).forEach(stat => {
+        dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat, value: evMap[stat] ?? 0 })
+      })
+      const filled = moves.slice(0, 4)
+      filled.forEach((move, i) => dispatch({ type: 'UPDATE_MOVE', slot: slotIndex, moveIdx: i, value: move }))
+      for (let i = filled.length; i < 4; i++) dispatch({ type: 'UPDATE_MOVE', slot: slotIndex, moveIdx: i, value: '' })
     }).catch(() => {})
   }
 
@@ -288,13 +334,22 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
       </div>
 
       {slot.pokemon && (
-        <button
-          className={'export-showdown-btn' + (copied ? ' copied' : '')}
-          onClick={handleExportShowdown}
-          title="Exporter vers Pokémon Showdown"
-        >
-          {copied ? '✓ Copié !' : 'Export Showdown'}
-        </button>
+        <div className="showdown-btn-group">
+          <button
+            className="import-showdown-btn"
+            onClick={handleImportShowdown}
+            title="Importer depuis Pokémon Showdown"
+          >
+            Import
+          </button>
+          <button
+            className={'export-showdown-btn' + (copied ? ' copied' : '')}
+            onClick={handleExportShowdown}
+            title="Exporter vers Pokémon Showdown"
+          >
+            {copied ? '✓ Copié !' : 'Export'}
+          </button>
+        </div>
       )}
     </div>
   )

@@ -611,7 +611,7 @@ export default function AdvCard() {
           .join("\n")
       : "";
 
-    return `${pokeName}${itemLine}\nAbility: ${currentAbility || ""}\nLevel: 50\n${evLine}${natureName} Nature\n${moves}${notesBlock}`;
+    return `${baseName}${itemLine}\nAbility: ${currentAbility || ""}\nLevel: 50\n${evLine}${natureName} Nature\n${moves}${notesBlock}`;
   }
 
   function handleExportShowdown() {
@@ -622,6 +622,53 @@ export default function AdvCard() {
         setTimeout(() => setCopied(false), 2000);
       })
       .catch(() => {});
+  }
+
+  function handleImportShowdown() {
+    navigator.clipboard.readText().then(text => {
+      const lines = text.trim().split('\n').map(l => l.trim()).filter(l => !l.startsWith('//'))
+      if (!lines.length) return
+      const firstLine = lines[0]
+      const atIdx = firstLine.indexOf(' @ ')
+      const importName = (atIdx >= 0 ? firstLine.slice(0, atIdx) : firstLine).trim()
+      const item = atIdx >= 0 ? firstLine.slice(atIdx + 3).trim() : '(No Item)'
+      if (!POKE_DATA[importName]) return
+      const EV_REVERSE: Record<string, 'sp_hp' | 'sp_at' | 'sp_df' | 'sp_sa' | 'sp_sd' | 'sp_sp'> = {
+        HP: 'sp_hp', Atk: 'sp_at', Def: 'sp_df', SpA: 'sp_sa', SpD: 'sp_sd', Spe: 'sp_sp',
+      }
+      let ability = ''
+      let natPlusVal = ''
+      let natMinusVal = ''
+      const evMap: Partial<Record<'sp_hp' | 'sp_at' | 'sp_df' | 'sp_sa' | 'sp_sd' | 'sp_sp', number>> = {}
+      const moves: string[] = []
+      for (const line of lines.slice(1)) {
+        if (line.startsWith('Ability: ')) {
+          ability = line.slice(9).trim()
+        } else if (line.startsWith('EVs: ')) {
+          line.slice(5).split('/').forEach(part => {
+            const m = part.trim().match(/^(\d+)\s+(.+)$/)
+            if (m) { const stat = EV_REVERSE[m[2].trim()]; if (stat) evMap[stat] = parseInt(m[1]) }
+          })
+        } else if (line.endsWith(' Nature')) {
+          const natureName = line.slice(0, -7).trim()
+          const found = Object.entries(NATURE_DATA).find(([name]) => name === natureName)
+          if (found) { natPlusVal = found[1][0]; natMinusVal = found[1][1] }
+        } else if (line.startsWith('- ')) {
+          moves.push(line.slice(2).trim())
+        }
+      }
+      dispatch({ type: 'SET_MATCHUP_ADV', pokeName: importName })
+      dispatch({ type: 'SET_ADV_ITEM', pokeName: importName, value: item })
+      if (ability) dispatch({ type: 'SET_ADV_ABILITY', pokeName: importName, value: ability })
+      dispatch({ type: 'SET_ADV_NATURE', pokeName: importName, field: 'natPlus', value: natPlusVal })
+      dispatch({ type: 'SET_ADV_NATURE', pokeName: importName, field: 'natMinus', value: natMinusVal })
+      ;(['sp_hp', 'sp_at', 'sp_df', 'sp_sa', 'sp_sd', 'sp_sp'] as const).forEach(stat => {
+        dispatch({ type: 'SET_ADV_STAT', pokeName: importName, statKey: stat, value: evMap[stat] ?? 0 })
+      })
+      const filled = moves.slice(0, 4)
+      filled.forEach((move, i) => dispatch({ type: 'SET_ADV_MOVE', pokeName: importName, moveIdx: i, value: move }))
+      for (let i = filled.length; i < 4; i++) dispatch({ type: 'SET_ADV_MOVE', pokeName: importName, moveIdx: i, value: '' })
+    }).catch(() => {})
   }
 
   return (
@@ -823,13 +870,22 @@ export default function AdvCard() {
       )}
 
       {pokeName && (
-        <button
-          className={"export-showdown-btn" + (copied ? " copied" : "")}
-          onClick={handleExportShowdown}
-          title="Exporter vers Pokémon Showdown"
-        >
-          {copied ? "✓ Copié !" : "Export Showdown"}
-        </button>
+        <div className="showdown-btn-group">
+          <button
+            className="import-showdown-btn"
+            onClick={handleImportShowdown}
+            title="Importer depuis Pokémon Showdown"
+          >
+            Import
+          </button>
+          <button
+            className={"export-showdown-btn" + (copied ? " copied" : "")}
+            onClick={handleExportShowdown}
+            title="Exporter vers Pokémon Showdown"
+          >
+            {copied ? "✓ Copié !" : "Export"}
+          </button>
+        </div>
       )}
     </div>
   );
