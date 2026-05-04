@@ -45,6 +45,15 @@ function parseSps(spreads: unknown[]): Record<string, number> | null {
 
 export interface AdvCCResult extends AdvCCData { isLoaded: boolean }
 
+function extractName(val: unknown): string {
+  if (typeof val === 'string') return val
+  const o = val as Record<string, unknown>
+  for (const k of ['en', 'fr', 'name', 'nom']) {
+    if (typeof o?.[k] === 'string') return o[k] as string
+  }
+  return ''
+}
+
 export function useAdvCC(pokeName: string): AdvCCResult {
   const baseName  = getBaseNameForCC(pokeName)
   const isMegaRow = pokeName !== baseName
@@ -62,7 +71,8 @@ export function useAdvCC(pokeName: string): AdvCCResult {
       .then(r => r.json())
       .then(raw => {
         const allAbilities = [raw?.pokemon?.ability_1, raw?.pokemon?.ability_2, raw?.pokemon?.ability_hidden]
-          .filter((a): a is string => !!a)
+          .map(a => extractName(a))
+          .filter(Boolean)
         const usages = raw?.usages ?? raw?.pokemon?.usages
         const ch = usages?.find((u: { provider: string }) => u.provider === 'champions')
         if (!ch) {
@@ -74,11 +84,20 @@ export function useAdvCC(pokeName: string): AdvCCResult {
           return
         }
 
-        const allMoves: CCMove[] = (ch.usageMoves ?? []).filter(
-          (m: CCMove) => !!getMoveData(m.move?.name ?? '')
-        )
-        const ccAbilities: CCAbility[] = isMegaRow ? [] : (ch.usageAbilities ?? [])
-        const ccItems:     CCItem[]    = ch.usageItems ?? []
+        const allMoves: CCMove[] = (ch.usageMoves ?? [])
+          .map((m: unknown) => {
+            const e = m as { move: { name: unknown }; percent: number }
+            return { move: { name: extractName(e.move?.name) }, percent: e.percent }
+          })
+          .filter((m: CCMove) => !!getMoveData(m.move.name))
+        const ccAbilities: CCAbility[] = isMegaRow ? [] : (ch.usageAbilities ?? []).map((e: unknown) => {
+          const entry = e as { ability: { name: unknown }; percent: number }
+          return { ability: { name: extractName(entry.ability?.name) }, percent: entry.percent }
+        })
+        const ccItems: CCItem[] = (ch.usageItems ?? []).map((e: unknown) => {
+          const entry = e as { item: { name: unknown }; percent: number }
+          return { item: { name: extractName(entry.item?.name) }, percent: entry.percent }
+        })
         const ccNature  = ch.usageSpreads?.length ? parseSpread(ch.usageSpreads) : null
         const ccSps     = ch.usageSpreads?.length ? parseSps(ch.usageSpreads)    : null
 
@@ -86,7 +105,8 @@ export function useAdvCC(pokeName: string): AdvCCResult {
         cache.set(pokeName, result)
         setData(result)
       })
-      .catch(() => { fetching.delete(pokeName) })
+      .catch(() => {})
+      .finally(() => { fetching.delete(pokeName) })
   }, [pokeName])
 
   return { ...data, isLoaded: cache.has(pokeName) }

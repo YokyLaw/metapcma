@@ -1,9 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { NATURE_DATA } from '../../data/constants'
-import { useFetchCCForSlot } from '../../hooks/useCC'
+import { useFetchCCForSlot, extractName } from '../../hooks/useCC'
 import { POKE_DATA } from '../../data/pokeData'
-import { ITEM_DATA } from '../../data/itemData'
 import { STAT_KEYS, STAT_LABELS, NATURE_STATS, NATURE_STAT_LABELS, STAT_BOOST_MULTS } from '../../data/constants'
 import { getUsage, useUsageLoaded } from '../../hooks/useUsageData'
 import { getEffectivePokeName, spriteUrl, itemSpriteUrl } from '../../calc/teamHelpers'
@@ -43,12 +42,12 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
 
   const effectiveName = getEffectivePokeName(slot)
   const pokeData = effectiveName ? POKE_DATA[effectiveName] : null
-  const t1 = pokeData?.t1 || ''
-  const t2 = pokeData?.t2 || ''
 
   const usageLoaded = useUsageLoaded()
-  const usedPokemon = new Set(
-    state.team.filter((_, i) => i !== slotIndex).map(s => s.pokemon).filter(Boolean)
+  const usedPokemonKey = state.team.map((s, i) => i === slotIndex ? '' : s.pokemon).join('|')
+  const usedPokemon = useMemo(
+    () => new Set(state.team.filter((_, i) => i !== slotIndex).map(s => s.pokemon).filter(Boolean)),
+    [usedPokemonKey],
   )
   const pokeOptions = useMemo(() => {
     const sorted = [...POKE_NAMES_BASE].sort((a, b) => {
@@ -59,11 +58,13 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
     })
     return sorted.map(n => {
       const u = getUsage(n)
+      const pd = POKE_DATA[n]
       return {
         value: n, label: n,
         meta: u > 0 ? `${Math.floor(u * 10) / 10}%` : undefined,
         image: spriteUrl(n),
         disabled: usedPokemon.has(n),
+        types: pd ? [pd.t1, ...(pd.t2 ? [pd.t2] : [])] : undefined,
       }
     })
   }, [usageLoaded, usedPokemon])
@@ -83,47 +84,58 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
   }
 
   const ccMoveData = slot.ccMoves as CCMoveEntry[] | null
-  const moves: CCMoveEntry[] = ccMoveData && ccMoveData.length > 0
-    ? ccMoveData
-    : slot.moves.filter(Boolean).map(n => ({ move: { name: n }, percent: 0 }))
-
-  // Item options
-  const ccItemsData = slot.ccItems as Array<{ item: { name: string }; percent: number }> | null
-  const ccItemNames = ccItemsData ? ccItemsData.map(it => it.item.name) : null
-  const ccItemsMap = ccItemsData
-    ? Object.fromEntries(ccItemsData.map(i => [i.item.name, i.percent]))
-    : {}
-  const apiItems = getItemList()
-  const baseItems = apiItems
-    ? [...apiItems, ...ITEM_DATA.filter(it => !apiItems.includes(it))]
-    : ITEM_DATA
-  const itemList = ccItemNames
-    ? ['(No Item)', ...ccItemNames, ...baseItems.filter(it => !ccItemNames.includes(it))]
-    : ['(No Item)', ...baseItems]
-  const usedItems = new Set(
-    state.team.filter((_, i) => i !== slotIndex).map(s => s.item).filter(it => it && it !== '(No Item)')
+  const moves: CCMoveEntry[] = useMemo(
+    () => ccMoveData && ccMoveData.length > 0
+      ? ccMoveData
+      : slot.moves.filter(Boolean).map(n => ({ move: { name: n }, percent: 0 })),
+    [ccMoveData, slot.moves],
   )
-  const itemOptions: SearchOption[] = itemList.map(it => ({
-    value: it,
-    label: it,
-    meta: ccItemsMap[it] != null ? `${Math.floor(ccItemsMap[it] * 10) / 10}%` : undefined,
-    image: it !== '(No Item)' ? itemSpriteUrl(it) : undefined,
-    disabled: it !== '(No Item)' && usedItems.has(it),
-    description: getItemDesc(it),
-  }))
 
-  // Ability options — sorted by CC usage if available
+  const ccItemsData = slot.ccItems as Array<{ item: { name: unknown }; percent: number }> | null
+  const usedItemsKey = state.team.map((s, i) => i === slotIndex ? '' : s.item).join('|')
+  const itemOptions: SearchOption[] = useMemo(() => {
+    const ccItemNames = ccItemsData ? ccItemsData.map(it => extractName(it.item.name)) : null
+    const ccItemsMap = ccItemsData
+      ? Object.fromEntries(ccItemsData.map(i => [extractName(i.item.name), i.percent]))
+      : {}
+    const baseItems = getItemList()
+    const itemList = ccItemNames
+      ? ['(No Item)', ...ccItemNames, ...baseItems.filter(it => !ccItemNames.includes(it))]
+      : ['(No Item)', ...baseItems]
+    const usedItems = new Set(
+      state.team.filter((_, i) => i !== slotIndex).map(s => s.item).filter(it => it && it !== '(No Item)')
+    )
+    return itemList.map(it => ({
+      value: it,
+      label: it,
+      meta: ccItemsMap[it] != null ? `${Math.floor(ccItemsMap[it] * 10) / 10}%` : undefined,
+      image: it !== '(No Item)' ? itemSpriteUrl(it) : undefined,
+      disabled: it !== '(No Item)' && usedItems.has(it),
+      description: getItemDesc(it),
+    }))
+  }, [ccItemsData, usedItemsKey])
+
   const ccAbilityData = slot.ccAbilities as CCAbilityEntry[] | null
-  const baseAbilities: string[] = slot.ccAllAbilities ??
-    (effectiveName && POKE_DATA[effectiveName]?.ab ? [POKE_DATA[effectiveName].ab!] : [])
-  const abilityOptions: SearchOption[] = ccAbilityData && ccAbilityData.length > 0
-    ? ccAbilityData.map(e => ({
-        value: e.ability.name,
-        label: e.ability.name,
-        meta: e.percent > 0 ? `${Math.floor(e.percent * 10) / 10}%` : undefined,
-        description: getAbilityDesc(e.ability.name),
-      }))
-    : baseAbilities.map(a => ({ value: a, label: a, description: getAbilityDesc(a) }))
+  const abilityOptions: SearchOption[] = useMemo(() => {
+    const baseAbilities: string[] = slot.ccAllAbilities ??
+      (effectiveName && POKE_DATA[effectiveName]?.ab ? [POKE_DATA[effectiveName].ab!] : [])
+    return ccAbilityData && ccAbilityData.length > 0
+      ? [
+          ...ccAbilityData.map(e => {
+            const abilityName = extractName(e.ability.name)
+            return {
+              value: abilityName,
+              label: abilityName,
+              meta: e.percent > 0 ? `${Math.floor(e.percent * 10) / 10}%` : undefined,
+              description: getAbilityDesc(abilityName),
+            }
+          }),
+          ...baseAbilities
+            .filter(a => !ccAbilityData.some(e => e.ability.name === a))
+            .map(a => ({ value: a, label: a, description: getAbilityDesc(a) })),
+        ]
+      : baseAbilities.map(a => ({ value: a, label: a, description: getAbilityDesc(a) }))
+  }, [ccAbilityData, slot.ccAllAbilities, effectiveName])
 
   // Computed totals
   const computedStats = pokeData
@@ -192,27 +204,6 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
       className={'pokemon-card' + (isSelected ? ' selected' : '')}
       onClick={handleCardClick}
     >
-      <div className="card-header">
-        <span className="slot-num">{slotIndex + 1}</span>
-        {(slot.megaForme || slot.pokemon) && (
-          <img
-            className="card-sprite"
-            src={spriteUrl(slot.megaForme || slot.pokemon)}
-            alt=""
-            onError={e => { e.currentTarget.style.display = 'none' }}
-          />
-        )}
-        <span className="poke-name-display">
-          {slot.pokemon || <span className="poke-placeholder">— Vide —</span>}
-        </span>
-        {t1 && <span className="type-badge" style={{ background: `var(--${t1})` }}>{t1}</span>}
-        {t2 && <span className="type-badge" style={{ background: `var(--${t2})` }}>{t2}</span>}
-      </div>
-
-      {slot.pokemon && (
-        <MegaBar slotIndex={slotIndex} pokemon={slot.pokemon} megaForme={slot.megaForme} />
-      )}
-
       <div className="card-selects">
         <div className="card-selects-full">
           <SearchSelect
@@ -224,8 +215,12 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
           />
         </div>
 
+        {slot.pokemon && (
+          <MegaBar slotIndex={slotIndex} pokemon={slot.pokemon} megaForme={slot.megaForme} />
+        )}
+
         <SearchSelect
-          value={slot.ability}
+          value={extractName(slot.ability as unknown)}
           options={abilityOptions}
           onChange={v => updateField('ability', v)}
           placeholder="— Talent —"

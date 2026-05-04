@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useLayoutEffect, type CSSProperties } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, type CSSProperties } from 'react'
 
 export interface SearchOption {
   value: string
@@ -9,6 +9,7 @@ export interface SearchOption {
   image?: string
   disabled?: boolean
   description?: string
+  types?: string[]
 }
 
 interface Props {
@@ -83,12 +84,14 @@ export default function SearchSelect({
     setTooltip(prev => prev ? { ...prev, style } : null)
   }, [tooltip])
 
-  const currentOption = options.find(o => o.value === value)
+  const currentOption = useMemo(() => options.find(o => o.value === value), [options, value])
   const currentLabel = currentOption?.label ?? value
 
-  const filtered = search
-    ? options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
-    : maxUnfiltered > 0 ? options.slice(0, maxUnfiltered) : options
+  const filtered = useMemo(() => {
+    if (!search) return maxUnfiltered > 0 ? options.slice(0, maxUnfiltered) : options
+    const q = search.toLowerCase()
+    return options.filter(o => String(o.label ?? '').toLowerCase().includes(q))
+  }, [options, search, maxUnfiltered])
 
   function openDropdown() {
     if (ref.current) {
@@ -181,6 +184,9 @@ export default function SearchSelect({
               <img className="search-select-img" src={currentOption.image} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
             )}
             <span className="search-select-trigger-label">{value ? currentLabel : placeholder}</span>
+            {currentOption?.types?.map(t => (
+              <span key={t} className="type-badge" style={{ background: `var(--${t})` }}>{t}</span>
+            ))}
             {(() => { const m = getMeta ? getMeta(value) : currentOption?.meta; return m ? <span className="search-select-meta">{m}</span> : null })()}
           </div>
         )

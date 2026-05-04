@@ -54,7 +54,7 @@ export default function StatItem({
       <div className="sp-spinner">
         <div className="sp-btn-row">
           <button className="sp-btn" onClick={e => stepSP(1, e)}>▲</button>
-          <button className="sp-btn-extreme" onClick={e => { e.stopPropagation(); e.preventDefault(); dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat: statKey, value: 32 }) }}>⇑</button>
+          <button className="sp-btn-extreme" onClick={e => { e.stopPropagation(); e.preventDefault(); dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat: statKey, value: 32 }) }}>▲▲</button>
         </div>
         <div className="sp-val-wrap">
           <span
@@ -72,7 +72,7 @@ export default function StatItem({
         </div>
         <div className="sp-btn-row">
           <button className="sp-btn" onClick={e => stepSP(-1, e)}>▼</button>
-          <button className="sp-btn-extreme" onClick={e => { e.stopPropagation(); e.preventDefault(); dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat: statKey, value: 0 }) }}>⇓</button>
+          <button className="sp-btn-extreme" onClick={e => { e.stopPropagation(); e.preventDefault(); dispatch({ type: 'UPDATE_SP', slot: slotIndex, stat: statKey, value: 0 }) }}>▼▼</button>
         </div>
         <span className={
           'stat-total' +

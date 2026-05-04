@@ -1,4 +1,5 @@
 import { useAppState } from '../../context/AppContext'
+import { extractName } from '../../hooks/useCC'
 import { useTableFilter } from '../../hooks/useTableFilter'
 import type { TableRow, SortKey } from '../../types'
 import FilterBar from './FilterBar'
@@ -26,7 +27,7 @@ export default function DamageTable() {
       spSa: adv.sp_sa ?? 0,
       advNatPlus: adv.natPlus || '',
       advNatMinus: adv.natMinus || '',
-      advAbility: adv.ability || '',
+      advAbility: extractName((adv.ability as unknown) || ''),
     }
   })
 

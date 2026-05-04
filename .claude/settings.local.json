@@ -33,7 +33,16 @@
       "Bash(powershell -Command \"ls -Recurse -Directory src | select -ExpandProperty Name\")",
       "Bash(rtk tsc *)",
       "Bash(rtk wc *)",
-      "Bash(Remove-Item *)"
+      "Bash(Remove-Item *)",
+      "Bash(rtk git *)",
+      "Bash(rtk find *)",
+      "Bash(rtk curl *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); usages=d.get\\('usages'\\) or d.get\\('pokemon',{}\\).get\\('usages',[]\\); ch=next\\(\\(u for u in usages if u.get\\('provider'\\)=='champions'\\),None\\); import pprint; pprint.pprint\\(ch and {k:\\(ch[k][:1] if isinstance\\(ch[k],list\\) else ch[k]\\) for k in ch}\\)\")",
+      "Bash(python -c 'import json; d=json.load\\(open\\('\\\\''/tmp/pika.json'\\\\'',encoding='\\\\''utf-8'\\\\'',errors='\\\\''replace'\\\\''\\)\\); usages=d.get\\('\\\\''usages'\\\\''\\) or d.get\\('\\\\''pokemon'\\\\'',{}\\).get\\('\\\\''usages'\\\\'',[]\\); ch=next\\(\\(u for u in usages if u.get\\('\\\\''provider'\\\\''\\)=='\\\\''champions'\\\\''\\),None\\); *)",
+      "Bash(python -c ' *)",
+      "Bash(rm pika.json)",
+      "Bash(curl.exe -sk \"https://www.coupcritique.fr/api/pokemon-name/Landorus-Therian\" -o pika.json)",
+      "Bash(curl.exe -sk \"https://www.coupcritique.fr/api/pokemon-name/Landorus-Therian\")"
     ]
   }
 }

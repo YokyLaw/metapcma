@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { NATURE_STATS, NATURE_STAT_LABELS } from '../../data/constants'
 import { spriteUrl, getEffectivePokeName, getBaseNameForCC } from '../../calc/teamHelpers'
@@ -8,6 +8,7 @@ import { calcStat, getStats } from '../../calc/statCalc'
 import { buildCalcCtx, calcOneMoveResult } from '../../calc/damageCalc'
 import { getAbilityDesc } from '../../hooks/useAbilityDesc'
 import { useAdvCC } from '../../hooks/useAdvCC'
+import { extractName } from '../../hooks/useCC'
 import type { TableRow, MoveSlotResult, TeamSlot } from '../../types'
 import SearchSelect from '../TeamPanel/SearchSelect'
 import type { SearchOption } from '../TeamPanel/SearchSelect'
@@ -61,33 +62,39 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
   // Set default ability when CC data first loads
   useEffect(() => {
     if (!isMegaRow && ccAbilities.length > 0 && !row.advAbility) {
-      const top = ccAbilities[0]?.ability?.name
+      const top = extractName(ccAbilities[0]?.ability?.name as unknown)
       if (top) dispatch({ type: 'SET_ADV_ABILITY', pokeName: row.name, value: top })
     }
   }, [ccAbilities.length])
 
   const advPokeData = POKE_DATA[row.name]
 
-  const megaOwnAbilities = isMegaRow ? (POKE_DATA[row.name]?.ab ? [POKE_DATA[row.name].ab!] : []) : []
+  const megaOwnAbility = isMegaRow ? (POKE_DATA[row.name]?.ab ?? '') : ''
+  const megaOwnAbilities = useMemo(
+    () => isMegaRow && megaOwnAbility ? [megaOwnAbility] : [],
+    [isMegaRow, megaOwnAbility],
+  )
   const allKnownAbilities = isMegaRow ? megaOwnAbilities : allAbilities
 
-  const abilityOptions: SearchOption[] = isMegaRow
-    ? megaOwnAbilities.map(a => ({ value: a, label: a }))
-    : (() => {
-        const ccSet = new Set(ccAbilities.map(c => c.ability.name))
-        const extra = allKnownAbilities.filter(a => !ccSet.has(a)).map(a => ({ value: a, label: a }))
-        return [
-          ...ccAbilities.map(c => ({
-            value: c.ability.name,
-            label: c.ability.name,
-            meta: c.percent > 0 ? `${fmt(c.percent)}%` : undefined,
-          })),
-          ...extra,
-        ]
-      })()
+  const abilityOptions: SearchOption[] = useMemo(() => {
+    if (isMegaRow) return megaOwnAbilities.map(a => ({ value: a, label: a }))
+    const ccSet = new Set(ccAbilities.map(c => extractName(c.ability.name as unknown)))
+    const extra = allAbilities.filter(a => !ccSet.has(a)).map(a => ({ value: a, label: a }))
+    return [
+      ...ccAbilities.map(c => {
+        const abilityName = extractName(c.ability.name as unknown)
+        return {
+          value: abilityName,
+          label: abilityName,
+          meta: c.percent > 0 ? `${(Math.floor(c.percent * 10) / 10).toFixed(1)}%` : undefined,
+        }
+      }),
+      ...extra,
+    ]
+  }, [isMegaRow, ccAbilities, megaOwnAbilities, allAbilities])
 
-  const currentAbility = row.advAbility
-    || (isMegaRow ? megaOwnAbilities[0] : ccAbilities[0]?.ability?.name)
+  const currentAbility = extractName((row.advAbility as unknown) || '')
+    || (isMegaRow ? megaOwnAbilities[0] : extractName(ccAbilities[0]?.ability?.name as unknown))
     || allKnownAbilities[0]
     || advPokeData?.ab
     || ''
@@ -128,57 +135,86 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
     ? calcStat(advPokeData.bs.sp, row.spSp ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'sp')
     : null
 
-  // Reverse damage: adversary moves → selected Pokémon
-  const topMoves = (() => {
+  const topMoves = useMemo(() => {
     if (row.name === 'Mega Charizard X') {
-      const protect     = ccMoves.filter(m => m.move.name === 'Protect')
-      const offensive   = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Physical')
-      const dragonDance = ccMoves.filter(m => m.move.name === 'Dragon Dance')
+      const protect: typeof ccMoves = []
+      const offensive: typeof ccMoves = []
+      const dragonDance: typeof ccMoves = []
+      for (const m of ccMoves) {
+        if (m.move.name === 'Protect') protect.push(m)
+        else if (m.move.name === 'Dragon Dance') dragonDance.push(m)
+        else if (getMoveData(m.move.name)?.category === 'Physical') offensive.push(m)
+      }
       return [...protect, ...offensive, ...dragonDance].slice(0, 4)
     }
     if (row.name === 'Mega Charizard Y') {
-      const offensive = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Special')
-      const status    = ccMoves.filter(m => getMoveData(m.move.name)?.category === 'Status')
+      const offensive: typeof ccMoves = []
+      const status: typeof ccMoves = []
+      for (const m of ccMoves) {
+        const cat = getMoveData(m.move.name)?.category
+        if (cat === 'Special') offensive.push(m)
+        else if (cat === 'Status') status.push(m)
+      }
       return [...offensive, ...status].slice(0, 4)
     }
     return ccMoves.slice(0, 4)
-  })()
-  const atkDefPokeData = atkSlot ? POKE_DATA[getEffectivePokeName(atkSlot)] : null
-  const advAtkSps = { hp: 0, at: row.spAt ?? 0, df: 0, sa: row.spSa ?? 0, sd: 0, sp: 0 }
-  const advAtkStats = advPokeData ? getStats(advPokeData, advAtkSps, row.advNatPlus || '', row.advNatMinus || '') : null
-  const advFakeSlot: TeamSlot = {
-    id: -1, pokemon: row.name, megaForme: '',
-    ability: currentAbility || advPokeData?.ab || '',
-    item: state.advItems[row.name] || '(No Item)',
-    natPlus: row.advNatPlus || '', natMinus: row.advNatMinus || '',
-    sps: advAtkSps,
-    boosts: { at: 0, df: 0, sa: 0, sd: 0, sp: 0 },
-    moves: ['', '', '', ''],
-    ccMoves: null, ccItems: null, ccAbilities: null, ccAllAbilities: null,
-    ccNature: null, ccSps: null,
-    preMegaAbility: '', preMegaItem: '',
-    useDefaultSet: false, preDefaultSet: null,
-  }
-  const atkAsDefOverride = atkSlot ? {
-    sp_hp: atkSlot.sps.hp, sp_df: atkSlot.sps.df, sp_sd: atkSlot.sps.sd,
-    sp_sp: atkSlot.sps.sp, sp_at: atkSlot.sps.at, sp_sa: atkSlot.sps.sa,
-    natPlus: atkSlot.natPlus, natMinus: atkSlot.natMinus,
-    ability: atkSlot.ability || '',
-  } : null
-  const revCtx = (advPokeData && advAtkStats && atkDefPokeData && atkAsDefOverride)
-    ? buildCalcCtx(advFakeSlot, advAtkStats, atkDefPokeData, atkAsDefOverride, weather, terrain)
-    : null
+  }, [row.name, ccMoves])
 
-  const defSlots: (MoveSlotResult | null)[] = topMoves.map(m => {
-    const moveType = getMoveData(m.move.name)?.type ?? 'Normal'
-    const calc = revCtx ? calcOneMoveResult(m.move.name, revCtx) : null
-    return {
-      move: m.move.name,
-      moveType,
-      immune: revCtx !== null && calc === null && (getMoveData(m.move.name)?.bp ?? 0) > 0,
-      calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct, isOHKO: calc.minPct >= 100, isKO: calc.maxPct >= 100 } : null,
+  const advItemForRow = state.advItems[row.name] || '(No Item)'
+  const atkSps = atkSlot?.sps
+  const atkNatPlus = atkSlot?.natPlus ?? ''
+  const atkNatMinus = atkSlot?.natMinus ?? ''
+  const atkAbility = atkSlot?.ability ?? ''
+  const atkPokemon = atkSlot?.pokemon
+  const atkMega = atkSlot?.megaForme
+
+  const revCtx = useMemo(() => {
+    const atkDefPokeData = atkSlot ? POKE_DATA[getEffectivePokeName(atkSlot)] : null
+    if (!advPokeData || !atkDefPokeData || !atkSlot) return null
+    const advAtkSps = { hp: 0, at: row.spAt ?? 0, df: 0, sa: row.spSa ?? 0, sd: 0, sp: 0 }
+    const advAtkStats = getStats(advPokeData, advAtkSps, row.advNatPlus || '', row.advNatMinus || '')
+    const advFakeSlot: TeamSlot = {
+      id: -1, pokemon: row.name, megaForme: '',
+      ability: currentAbility || advPokeData?.ab || '',
+      item: advItemForRow,
+      natPlus: row.advNatPlus || '', natMinus: row.advNatMinus || '',
+      sps: advAtkSps,
+      boosts: { at: 0, df: 0, sa: 0, sd: 0, sp: 0 },
+      moves: ['', '', '', ''],
+      ccMoves: null, ccItems: null, ccAbilities: null, ccAllAbilities: null,
+      ccNature: null, ccSps: null,
+      preMegaAbility: '', preMegaItem: '',
+      useDefaultSet: false, preDefaultSet: null,
     }
-  })
+    const atkAsDefOverride = {
+      sp_hp: atkSlot.sps.hp, sp_df: atkSlot.sps.df, sp_sd: atkSlot.sps.sd,
+      sp_sp: atkSlot.sps.sp, sp_at: atkSlot.sps.at, sp_sa: atkSlot.sps.sa,
+      natPlus: atkSlot.natPlus, natMinus: atkSlot.natMinus,
+      ability: atkSlot.ability || '',
+    }
+    return buildCalcCtx(advFakeSlot, advAtkStats, atkDefPokeData, atkAsDefOverride, weather, terrain)
+  }, [
+    advPokeData, row.name, row.spAt, row.spSa, row.advNatPlus, row.advNatMinus,
+    currentAbility, advItemForRow,
+    atkPokemon, atkMega, atkAbility, atkNatPlus, atkNatMinus,
+    atkSps?.hp, atkSps?.at, atkSps?.df, atkSps?.sa, atkSps?.sd, atkSps?.sp,
+    weather, terrain,
+  ])
+
+  const defSlots: (MoveSlotResult | null)[] = useMemo(
+    () => topMoves.map(m => {
+      const md = getMoveData(m.move.name)
+      const moveType = md?.type ?? 'Normal'
+      const calc = revCtx ? calcOneMoveResult(m.move.name, revCtx) : null
+      return {
+        move: m.move.name,
+        moveType,
+        immune: revCtx !== null && calc === null && (md?.bp ?? 0) > 0,
+        calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct, isOHKO: calc.minPct >= 100, isKO: calc.maxPct >= 100 } : null,
+      }
+    }),
+    [topMoves, revCtx],
+  )
   const slots = row.moveResults as (MoveSlotResult | null)[]
 
   return (

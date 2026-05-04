@@ -5,8 +5,18 @@ import { MEGA_MAP } from '../data/megaMap'
 
 const SP_TOTAL_MAX = 66
 
+function extractStr(val: unknown): string {
+  if (typeof val === 'string') return val
+  const o = val as Record<string, unknown>
+  for (const k of ['en', 'fr', 'name', 'nom']) {
+    if (typeof o?.[k] === 'string') return o[k] as string
+  }
+  return ''
+}
+
 function clampSp(current: Record<string, number>, key: string, value: number): number {
-  const others = Object.entries(current).filter(([k]) => k !== key).reduce((s, [, v]) => s + v, 0)
+  let others = 0
+  for (const k in current) if (k !== key) others += current[k]
   return Math.min(value, Math.max(0, SP_TOTAL_MAX - others))
 }
 
@@ -14,9 +24,9 @@ type CCMoveList = Array<{ move: { name: string } }>
 
 function filterCCMoves(ccMoves: CCMoveList, megaForme: string): CCMoveList {
   if (megaForme === 'Mega Charizard X')
-    return ccMoves.filter(m => { const cat = getMoveData(m.move.name)?.category; return cat === 'Physical' || cat === 'Status' })
+    return ccMoves.filter(m => { const cat = getMoveData(extractStr(m.move.name as unknown))?.category; return cat === 'Physical' || cat === 'Status' })
   if (megaForme === 'Mega Charizard Y')
-    return ccMoves.filter(m => { const cat = getMoveData(m.move.name)?.category; return cat === 'Special' || cat === 'Status' })
+    return ccMoves.filter(m => { const cat = getMoveData(extractStr(m.move.name as unknown))?.category; return cat === 'Special' || cat === 'Status' })
   return ccMoves
 }
 
@@ -24,7 +34,7 @@ function applyTopMoves(slot: TeamSlot, megaForme: string): void {
   const ccMoves = slot.ccMoves as CCMoveList | null
   if (!ccMoves?.length) return
   const filtered = filterCCMoves(ccMoves, megaForme)
-  const top4 = filtered.slice(0, 4).map(m => m.move.name)
+  const top4 = filtered.slice(0, 4).map(m => extractStr(m.move.name as unknown))
   while (top4.length < 4) top4.push('')
   slot.moves = top4 as [string, string, string, string]
 }
@@ -148,7 +158,13 @@ export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'LOAD_STATE': {
       const team = action.payload.team
-        ? (action.payload.team as TeamSlot[]).map((slot, i) => ({ ...makeSlot(i), ...slot }))
+        ? (action.payload.team as TeamSlot[]).map((slot, i) => ({
+            ...makeSlot(i),
+            ...slot,
+            ability: extractStr((slot as unknown as Record<string, unknown>).ability),
+            item: extractStr((slot as unknown as Record<string, unknown>).item) || '(No Item)',
+            moves: ((slot as unknown as Record<string, unknown>).moves as unknown[] ?? []).map(m => extractStr(m)) as [string, string, string, string],
+          }))
         : state.team
       return { ...state, ...action.payload, team, tableData: [] }
     }
@@ -259,9 +275,9 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.preMegaItem    = ''
 
         if (slot.useDefaultSet) {
-          const topAbility = (slot.ccAbilities as Array<{ ability: { name: string } }> | null)?.[0]?.ability?.name
+          const topAbility = extractStr((slot.ccAbilities as Array<{ ability: { name: unknown } }> | null)?.[0]?.ability?.name)
           if (topAbility) slot.ability = topAbility
-          const topItem = (slot.ccItems as Array<{ item: { name: string } }> | null)?.[0]?.item?.name
+          const topItem = extractStr((slot.ccItems as Array<{ item: { name: unknown } }> | null)?.[0]?.item?.name)
           if (topItem) {
             slot.item = topItem
             for (let i = 0; i < team.length; i++) {
@@ -298,7 +314,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         if (wasFirstLoad && action.ccAbilities && action.ccAbilities.length > 0) {
           const defaultAbility = POKE_DATA[action.pokemon]?.ab ?? ''
           if (slot.ability === defaultAbility || slot.ability === '') {
-            const top = (action.ccAbilities[0] as { ability?: { name?: string } }).ability?.name
+            const top = extractStr((action.ccAbilities[0] as { ability?: { name?: unknown } }).ability?.name)
             if (top) slot.ability = top
           }
         }
@@ -530,10 +546,10 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.useDefaultSet = true
 
         if (!isMegaWithStone) {
-          const topAbility = (slot.ccAbilities as Array<{ ability: { name: string } }> | null)?.[0]?.ability?.name
+          const topAbility = extractStr((slot.ccAbilities as Array<{ ability: { name: unknown } }> | null)?.[0]?.ability?.name)
           if (topAbility) slot.ability = topAbility
 
-          const topItem = (slot.ccItems as Array<{ item: { name: string } }> | null)?.[0]?.item?.name
+          const topItem = extractStr((slot.ccItems as Array<{ item: { name: unknown } }> | null)?.[0]?.item?.name)
           if (topItem) {
             slot.item = topItem
             for (let i = 0; i < team.length; i++) {
@@ -581,10 +597,10 @@ export function appReducer(state: AppState, action: Action): AppState {
       const isMegaWithStone = !!(slot.megaForme && slot.preMegaItem)
 
       if (!isMegaWithStone) {
-        const topAbility = (slot.ccAbilities as Array<{ ability: { name: string } }> | null)?.[0]?.ability?.name
+        const topAbility = extractStr((slot.ccAbilities as Array<{ ability: { name: unknown } }> | null)?.[0]?.ability?.name)
         if (topAbility) slot.ability = topAbility
 
-        const topItem = (slot.ccItems as Array<{ item: { name: string } }> | null)?.[0]?.item?.name
+        const topItem = extractStr((slot.ccItems as Array<{ item: { name: unknown } }> | null)?.[0]?.item?.name)
         if (topItem) {
           slot.item = topItem
           for (let i = 0; i < team.length; i++) {

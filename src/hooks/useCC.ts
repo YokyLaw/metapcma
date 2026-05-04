@@ -51,7 +51,7 @@ function parseTopSpread(spreads: CCSpreadEntry[]): { nature: { natPlus: string; 
 
 interface CCApiResponse {
   usages?: CCUsage[]
-  pokemon?: { id?: number; usages?: CCUsage[]; ability_1?: string; ability_2?: string; ability_hidden?: string }
+  pokemon?: { id?: number; usages?: CCUsage[]; ability_1?: unknown; ability_2?: unknown; ability_hidden?: unknown }
   id?: number
 }
 
@@ -64,6 +64,15 @@ function parseMoveNames(data: unknown): string[] {
   const obj = data as { moves?: unknown } | null
   if (obj?.moves) return parseMoveNames(obj.moves)
   return []
+}
+
+export function extractName(val: unknown): string {
+  if (typeof val === 'string') return val
+  const obj = val as Record<string, unknown>
+  for (const k of ['en', 'fr', 'name', 'nom'] as const) {
+    if (typeof obj?.[k] === 'string') return obj[k] as string
+  }
+  return ''
 }
 
 async function fetchCC(name: string): Promise<{
@@ -79,7 +88,8 @@ async function fetchCC(name: string): Promise<{
     const res = await fetch('/api/cc/' + encodeURIComponent(name))
     const json: CCApiResponse = await res.json()
     const allAbilities = [json.pokemon?.ability_1, json.pokemon?.ability_2, json.pokemon?.ability_hidden]
-      .filter((a): a is string => !!a)
+      .map(a => extractName(a as unknown))
+      .filter(Boolean)
     const usages = json.usages ?? json.pokemon?.usages
     const championsUsage = usages?.find(u => u.provider === 'champions')
 
@@ -87,12 +97,19 @@ async function fetchCC(name: string): Promise<{
       const { nature: ccNature, sps: ccSps } = championsUsage.usageSpreads?.length
         ? parseTopSpread(championsUsage.usageSpreads)
         : { nature: null, sps: null }
-      return {
-        ccMoves:     championsUsage.usageMoves ?? null,
-        ccItems:     championsUsage.usageItems ?? null,
-        ccAbilities: championsUsage.usageAbilities ?? null,
-        ccNature, ccSps, allAbilities,
-      }
+      const ccMoves = championsUsage.usageMoves?.map(m => ({
+        move: { name: extractName((m as { move?: { name?: unknown } }).move?.name) },
+        percent: (m as { percent?: number }).percent ?? 0,
+      })) ?? null
+      const ccAbilities = championsUsage.usageAbilities?.map(e => ({
+        ability: { name: extractName((e as { ability?: { name?: unknown } }).ability?.name) },
+        percent: (e as { percent?: number }).percent ?? 0,
+      })) ?? null
+      const ccItems = championsUsage.usageItems?.map(i => ({
+        item: { name: extractName((i as { item?: { name?: unknown } }).item?.name) },
+        percent: (i as { percent?: number }).percent ?? 0,
+      })) ?? null
+      return { ccMoves, ccItems, ccAbilities, ccNature, ccSps, allAbilities }
     }
 
     const id = json.pokemon?.id ?? json.id

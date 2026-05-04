@@ -1,4 +1,5 @@
 import { MEGA_MAP } from '../data/megaMap'
+import { ITEM_DATA } from '../data/itemData'
 
 interface CCItem { name: string; description: string }
 
@@ -9,8 +10,13 @@ for (const megas of Object.values(MEGA_MAP)) {
   }
 }
 
+const ITEM_DATA_SET = new Set(ITEM_DATA)
+export const ITEM_LIST: string[] = [
+  ...ITEM_DATA,
+  ...Object.keys(STONE_TO_POKE).filter(s => !ITEM_DATA_SET.has(s)),
+]
+
 let cache: Record<string, string> | null = null
-let nameCache: string[] | null = null
 let fetchPromise: Promise<void> | null = null
 
 export function prefetchItemDescs(): Promise<void> {
@@ -19,20 +25,17 @@ export function prefetchItemDescs(): Promise<void> {
     .then(r => r.json())
     .then((data: { items?: CCItem[] }) => {
       cache = {}
-      nameCache = []
       for (const item of data.items ?? []) {
-        if (item.name) {
-          nameCache.push(item.name)
-          if (item.description) cache[item.name] = item.description
-        }
+        if (!item.name || !item.description || item.description.startsWith('Indisponible')) continue
+        cache[item.name] = item.description
       }
     })
-    .catch(() => { cache = {}; nameCache = [] })
+    .catch(() => { cache = {} })
   return fetchPromise
 }
 
-export function getItemList(): string[] | null {
-  return nameCache
+export function getItemList(): string[] {
+  return ITEM_LIST
 }
 
 export function getItemDesc(name: string): string | undefined {
