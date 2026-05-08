@@ -39,12 +39,6 @@ export default function MatchupTab() {
             : <div className="matchup-no-poke">Slot vide</div>
           }
 
-          <textarea
-            className="matchup-notes"
-            placeholder="Notes sur ce Pokémon..."
-            value={slotNotes[activeSlot] || ''}
-            onChange={e => dispatch({ type: 'SET_SLOT_NOTES', slot: activeSlot, notes: e.target.value })}
-          />
         </div>
 
         {/* MIDDLE — favorites table */}

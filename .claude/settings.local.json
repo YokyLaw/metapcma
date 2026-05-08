@@ -45,7 +45,8 @@
       "Bash(curl.exe -sk \"https://www.coupcritique.fr/api/pokemon-name/Landorus-Therian\")",
       "Bash(rtk gain *)",
       "Bash(Get-ChildItem -Force)",
-      "Bash(rtk read *)"
+      "Bash(rtk read *)",
+      "Bash(Select-String -Pattern \"speed|Speed|spd\" -Context 3)"
     ]
   }
 }

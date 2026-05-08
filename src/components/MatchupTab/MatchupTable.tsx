@@ -53,9 +53,8 @@ export default function MatchupTable() {
       <thead>
         <tr>
           <th>OFFENSE</th>
-          <th>OPPONENT</th>
-          <th>DEFENSE</th>
           <th>SPEED</th>
+          <th>DEFENSE</th>
         </tr>
       </thead>
       <tbody>

@@ -176,7 +176,13 @@
 }
 .damage-table tr:hover td { background: #141720; }
 .damage-table td { width: 1px; }
-.damage-table td:nth-child(2) { vertical-align: top; padding-bottom: 6px; min-width: 340px; }
+.damage-table td:nth-child(2) { vertical-align: top; padding-bottom: 6px; min-width: 200px; }
+
+.adv-opponent-header {
+  padding-bottom: 5px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
 
 .adv-block {
   display: flex;

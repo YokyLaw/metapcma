@@ -17,11 +17,8 @@ import {
   itemSpriteUrl,
   getBaseNameForCC,
   getMegaOptions,
-  getEffectivePokeName,
 } from "../../calc/teamHelpers";
-import { calcStat, getStats } from "../../calc/statCalc";
-import { buildCalcCtx, calcOneMoveResult } from "../../calc/damageCalc";
-import type { CalcCtx } from "../../calc/damageCalc";
+import { calcStat } from "../../calc/statCalc";
 import { getAbilityDesc } from "../../hooks/useAbilityDesc";
 import { getItemList } from "../../hooks/useItemDesc";
 import { getMoveDesc } from "../../hooks/useMoveMeta";
@@ -29,7 +26,6 @@ import { extractName } from "../../hooks/useCC";
 import { useAdvCC } from "../../hooks/useAdvCC";
 import SearchSelect from "../TeamPanel/SearchSelect";
 import type { SearchOption } from "../TeamPanel/SearchSelect";
-import type { StatMap, AdvOverride, TeamSlot, BoostMap } from "../../types";
 
 type AdvStatKey = "sp_hp" | "sp_df" | "sp_sd" | "sp_sp" | "sp_at" | "sp_sa";
 const STAT_KEY_MAP: Record<string, AdvStatKey> = {
@@ -229,7 +225,6 @@ interface AdvMoveSlotProps {
   moveIdx: number;
   value: string;
   options: SearchOption[];
-  calcCtx?: CalcCtx | null;
 }
 
 function AdvMoveSlot({
@@ -237,21 +232,10 @@ function AdvMoveSlot({
   moveIdx,
   value,
   options,
-  calcCtx,
 }: AdvMoveSlotProps) {
   const { dispatch } = useAppState();
   const md = value ? getMoveData(value) : null;
   const dotColor = md ? `var(--${md.type})` : "var(--muted)";
-
-  function getDamage(moveName: string): string | undefined {
-    if (!calcCtx || !moveName) return undefined;
-    const r = calcOneMoveResult(moveName, calcCtx);
-    if (!r || r.maxPct === 0) return undefined;
-    if (r.minPct >= 100) return "OHKO";
-    const min = (Math.floor(r.minPct * 10) / 10).toFixed(1);
-    const max = (Math.floor(r.maxPct * 10) / 10).toFixed(1);
-    return min === max ? `${min}%` : `${min}~${max}%`;
-  }
 
   return (
     <div className="move-slot">
@@ -264,7 +248,6 @@ function AdvMoveSlot({
         }
         placeholder="(Aucun)"
         getDescription={getMoveDesc}
-        getMeta={calcCtx ? getDamage : undefined}
       />
     </div>
   );
@@ -328,8 +311,6 @@ export default function AdvCard() {
   const adv = state.advStats[pokeName] || {};
   const advBoosts = state.advBoosts[pokeName] || {};
   const baseAdvPokeData = isMegaRow ? POKE_DATA[baseName] : null;
-  const teamSlot =
-    state.selectedSlot != null ? state.team[state.selectedSlot] : null;
 
   function getBaseStatChange(key: string): number {
     if (!advPokeData || !baseAdvPokeData) return 0;
@@ -358,77 +339,6 @@ export default function AdvCard() {
   const advMoves = state.advMoves[pokeName] ?? ["", "", "", ""];
   const advItem =
     extractName((state.advItems[pokeName] as unknown) || "") || "(No Item)";
-
-  const advAsAtkCtx = useMemo(() => {
-    if (!advPokeData || !teamSlot?.pokemon) return null;
-    const defEffName = getEffectivePokeName(teamSlot);
-    const defPokeData = POKE_DATA[defEffName];
-    if (!defPokeData) return null;
-    const advSps: StatMap = {
-      hp: spMap.hp ?? 0,
-      at: spMap.at ?? 0,
-      df: spMap.df ?? 0,
-      sa: spMap.sa ?? 0,
-      sd: spMap.sd ?? 0,
-      sp: spMap.sp ?? 0,
-    };
-    const advAtkStats = getStats(advPokeData, advSps, advNatPlus, advNatMinus);
-    const pseudoSlot: Partial<TeamSlot> = {
-      pokemon: isMegaRow ? baseName : pokeName,
-      megaForme: isMegaRow ? pokeName : "",
-      ability: advAbility || advPokeData.ab || "",
-      item: advItem,
-      boosts: advBoosts as BoostMap,
-    };
-    const teamOverride: Partial<AdvOverride> = {
-      sp_hp: teamSlot.sps.hp ?? 0,
-      sp_at: teamSlot.sps.at ?? 0,
-      sp_df: teamSlot.sps.df ?? 0,
-      sp_sa: teamSlot.sps.sa ?? 0,
-      sp_sd: teamSlot.sps.sd ?? 0,
-      sp_sp: teamSlot.sps.sp ?? 0,
-      natPlus: teamSlot.natPlus,
-      natMinus: teamSlot.natMinus,
-      ability: teamSlot.ability,
-    };
-    return buildCalcCtx(
-      pseudoSlot as TeamSlot,
-      advAtkStats,
-      defPokeData,
-      teamOverride,
-      state.weather,
-      state.terrain,
-    );
-  }, [
-    pokeName,
-    advAbility,
-    advItem,
-    advNatPlus,
-    advNatMinus,
-    isMegaRow,
-    baseName,
-    spMap.hp,
-    spMap.at,
-    spMap.df,
-    spMap.sa,
-    spMap.sd,
-    spMap.sp,
-    advBoosts,
-    teamSlot?.pokemon,
-    teamSlot?.megaForme,
-    teamSlot?.ability,
-    teamSlot?.item,
-    teamSlot?.natPlus,
-    teamSlot?.natMinus,
-    teamSlot?.sps.hp,
-    teamSlot?.sps.at,
-    teamSlot?.sps.df,
-    teamSlot?.sps.sa,
-    teamSlot?.sps.sd,
-    teamSlot?.sps.sp,
-    state.weather,
-    state.terrain,
-  ]);
 
   const megaOwnAbility = isMegaRow ? (POKE_DATA[pokeName]?.ab ?? "") : "";
   const megaOwnAbilities = useMemo(
@@ -861,7 +771,6 @@ export default function AdvCard() {
                   moveIdx={mi}
                   value={mv}
                   options={available}
-                  calcCtx={advAsAtkCtx}
                 />
               );
             })}

@@ -58,9 +58,8 @@ export default function DamageTable() {
         <thead>
           <tr>
             <th>OFFENSE</th>
-            <th>OPPONENT</th>
-            <th>DEFENSE</th>
             <th>SPEEDTIER</th>
+            <th>DEFENSE</th>
           </tr>
         </thead>
         <tbody>
