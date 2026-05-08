@@ -23,6 +23,8 @@ interface Props {
   onSelect?: () => void
   isSelected?: boolean
   simplified?: boolean
+  useAdvStats?: boolean
+  onRemove?: () => void
 }
 
 function fmt(pct: number): string {
@@ -69,7 +71,7 @@ export function MoveSlotDiv({ slot, mirrored }: { slot: MoveSlotResult | null; m
   )
 }
 
-export default function DamageRow({ row, onSelect, isSelected, simplified }: Props) {
+export default function DamageRow({ row, onSelect, isSelected, simplified, useAdvStats, onRemove }: Props) {
   const baseName  = getBaseNameForCC(row.name)
   const isMegaRow = row.name !== baseName
 
@@ -80,7 +82,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
   useEffect(() => {
     if (!isMegaRow && ccAbilities.length > 0 && !row.advAbility) {
       const top = extractName(ccAbilities[0]?.ability?.name as unknown)
-      if (top) dispatch({ type: 'SET_ADV_ABILITY', pokeName: row.name, value: top })
+      if (top) dispatch({ type: 'SET_ADV_ABILITY', pokeName: row.id || row.name, value: top })
     }
   }, [ccAbilities.length])
 
@@ -121,7 +123,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
     hp: row.spHP ?? 0, df: row.spDf ?? 0, sd: row.spSd ?? 0,
     sp: row.spSp ?? 0, at: row.spAt ?? 0, sa: row.spSa ?? 0,
   }
-  const { weather, terrain, trickRoom, gravity, battleFormat, tailwind, auroraVeil, reflect, lightScreen, advTailwind, advHelpingHand } = state
+  const { trickRoom, tailwind, advTailwind, weather, terrain, gravity, battleFormat, auroraVeil, reflect, lightScreen, advHelpingHand } = state
 
   // Speed comparison
   const atkSlot = state.selectedSlot !== null ? state.team[state.selectedSlot] : null
@@ -133,34 +135,9 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
     ? calcStat(advPokeData.bs.sp, row.spSp ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'sp') * (advTailwind ? 2 : 1)
     : null
 
-  const topMoves = useMemo(() => {
-    if (row.name === 'Mega Charizard X') {
-      const protect: typeof ccMoves = []
-      const offensive: typeof ccMoves = []
-      const dragonDance: typeof ccMoves = []
-      for (const m of ccMoves) {
-        if (m.move.name === 'Protect') protect.push(m)
-        else if (m.move.name === 'Dragon Dance') dragonDance.push(m)
-        else if (getMoveData(m.move.name)?.category === 'Physical') offensive.push(m)
-      }
-      return [...protect, ...offensive, ...dragonDance].slice(0, 4)
-    }
-    if (row.name === 'Mega Charizard Y') {
-      const offensive: typeof ccMoves = []
-      const status: typeof ccMoves = []
-      for (const m of ccMoves) {
-        const cat = getMoveData(m.move.name)?.category
-        if (cat === 'Special') offensive.push(m)
-        else if (cat === 'Status') status.push(m)
-      }
-      return [...offensive, ...status].slice(0, 4)
-    }
-    return ccMoves.slice(0, 4)
-  }, [row.name, ccMoves])
-
-  const advItemForRow = state.advItems[row.name] || '(No Item)'
-  const advBoostsForRow = state.advBoosts[row.name] as BoostMap | undefined
-  const advMovesForRow = state.advMoves[row.name]
+  const advKey = row.id || row.name
+  const advItemForRow = state.advItems[advKey] || '(No Item)'
+  const advBoostsForRow = state.advBoosts[advKey] as BoostMap | undefined
   const atkSps = atkSlot?.sps
   const atkNatPlus = atkSlot?.natPlus ?? ''
   const atkNatMinus = atkSlot?.natMinus ?? ''
@@ -171,15 +148,16 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
   const revCtx = useMemo(() => {
     const atkDefPokeData = atkSlot ? POKE_DATA[getEffectivePokeName(atkSlot)] : null
     if (!advPokeData || !atkDefPokeData || !atkSlot) return null
-    const advAtkSps = { hp: 0, at: simplified ? (row.spAt ?? 0) : 0, df: 0, sa: simplified ? (row.spSa ?? 0) : 0, sd: 0, sp: 0 }
-    const advAtkStats = getStats(advPokeData, advAtkSps, simplified ? (row.advNatPlus || '') : '', simplified ? (row.advNatMinus || '') : '')
+    const applyAdv = simplified || !!useAdvStats
+    const advAtkSps = { hp: 0, at: applyAdv ? (row.spAt ?? 0) : 0, df: 0, sa: applyAdv ? (row.spSa ?? 0) : 0, sd: 0, sp: 0 }
+    const advAtkStats = getStats(advPokeData, advAtkSps, applyAdv ? (row.advNatPlus || '') : '', applyAdv ? (row.advNatMinus || '') : '')
     const advFakeSlot: TeamSlot = {
       id: -1, pokemon: row.name, megaForme: '',
       ability: currentAbility || advPokeData?.ab || '',
-      item: simplified ? advItemForRow : '(No Item)',
-      natPlus: simplified ? (row.advNatPlus || '') : '', natMinus: simplified ? (row.advNatMinus || '') : '',
+      item: applyAdv ? advItemForRow : '(No Item)',
+      natPlus: applyAdv ? (row.advNatPlus || '') : '', natMinus: applyAdv ? (row.advNatMinus || '') : '',
       sps: advAtkSps,
-      boosts: (simplified ? advBoostsForRow : undefined) ?? { at: 0, df: 0, sa: 0, sd: 0, sp: 0 },
+      boosts: (applyAdv ? advBoostsForRow : undefined) ?? { at: 0, df: 0, sa: 0, sd: 0, sp: 0 },
       moves: ['', '', '', ''],
       ccMoves: null, ccItems: null, ccAbilities: null, ccAllAbilities: null,
       ccNature: null, ccSps: null,
@@ -198,30 +176,30 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
     currentAbility, advItemForRow,
     atkPokemon, atkMega, atkAbility, atkNatPlus, atkNatMinus,
     atkSps?.hp, atkSps?.at, atkSps?.df, atkSps?.sa, atkSps?.sd, atkSps?.sp,
-    weather, terrain, gravity, battleFormat, simplified, auroraVeil, reflect, lightScreen,
+    weather, terrain, gravity, battleFormat, simplified, useAdvStats, auroraVeil, reflect, lightScreen,
     advBoostsForRow?.at, advBoostsForRow?.df, advBoostsForRow?.sa, advBoostsForRow?.sd, advBoostsForRow?.sp,
     advHelpingHand,
   ])
 
-  const defSlots: (MoveSlotResult | null)[] = useMemo(
-    () => {
-      const hasCustom = simplified && advMovesForRow?.some(m => m !== '')
-      const moveNames = hasCustom
-        ? advMovesForRow!.filter(m => m !== '')
-        : topMoves.map(m => m.move.name)
-      return moveNames.map(moveName => {
-        const md = getMoveData(moveName)
-        const moveType = md?.type ?? 'Normal'
-        const calc = revCtx ? calcOneMoveResult(moveName, revCtx) : null
-        return {
-          move: moveName,
-          moveType,
-          immune: revCtx !== null && calc === null && (md?.bp ?? 0) > 0,
-          calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct, isOHKO: calc.minPct >= 100, isKO: calc.maxPct >= 100 } : null,
-        }
-      })
-    },
-    [topMoves, revCtx, advMovesForRow, simplified],
+  const top8OffMoves = useMemo(
+    () => ccMoves.filter(m => getMoveData(m.move.name)?.category !== 'Status').slice(0, 8),
+    [ccMoves],
+  )
+
+  const defMoves = useMemo(() =>
+    top8OffMoves.map(m => {
+      const md = getMoveData(m.move.name)
+      const moveType = md?.type ?? 'Normal'
+      const calc = revCtx ? calcOneMoveResult(m.move.name, revCtx) : null
+      return {
+        name: m.move.name,
+        percent: m.percent,
+        moveType,
+        immune: revCtx !== null && calc === null && (md?.bp ?? 0) > 0,
+        calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct } : null,
+      }
+    }),
+    [top8OffMoves, revCtx],
   )
   const slots = row.moveResults as (MoveSlotResult | null)[]
 
@@ -231,34 +209,49 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
         className={'mainrow' + (isSelected ? ' adv-row-selected' : '') + (onSelect ? ' adv-row-clickable' : '')}
         onClick={onSelect}
       >
+        {simplified ? (
+          <th className="matchup-row-th" scope="row">
+            <div className="poke-name-info">
+              <img className="adv-sprite" src={spriteUrl(row.name)} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
+              <strong>{row.name}</strong>
+              {usage !== undefined && (
+                <span style={{ fontSize:10, color:'var(--muted)', fontFamily:"'IBM Plex Mono',monospace", flexShrink:0 }}>
+                  {usage.toFixed(1)}%
+                </span>
+              )}
+            </div>
+            <div className="adv-simple-info">
+              {currentAbility && <span className="adv-simple-tag">{currentAbility}</span>}
+              {(row.advNatPlus || row.advNatMinus) && (
+                <span className="adv-simple-tag adv-simple-nature">
+                  {row.advNatPlus && <span className="boosted-text">+{NATURE_STAT_LABELS[row.advNatPlus]}</span>}
+                  {row.advNatPlus && row.advNatMinus && ' '}
+                  {row.advNatMinus && <span className="dropped-text">-{NATURE_STAT_LABELS[row.advNatMinus]}</span>}
+                </span>
+              )}
+              {(Object.entries(spMap) as [string, number][])
+                .filter(([, v]) => v > 0)
+                .map(([k, v]) => (
+                  <span key={k} className="adv-simple-tag">
+                    {({ hp:'HP', df:'DEF', sd:'SpD', sp:'SPE', at:'ATK', sa:'SpA' } as Record<string,string>)[k]} {v}
+                  </span>
+                ))
+              }
+            </div>
+            {onRemove && (
+              <button
+                className="matchup-remove-btn"
+                onClick={e => { e.stopPropagation(); onRemove() }}
+                title="Retirer"
+              >
+                ×
+              </button>
+            )}
+          </th>
+        ) : null}
         <td className="adv-moves-cell">
-          <div className="adv-opponent-header">
-            {simplified ? (
-              <div className="adv-block-simple">
-                <div className="poke-name-info">
-                  {atkSlot && <img className="adv-sprite" src={spriteUrl(getEffectivePokeName(atkSlot))} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />}
-                  <strong>{atkSlot ? getEffectivePokeName(atkSlot) : '—'}</strong>
-                </div>
-                <div className="adv-simple-info">
-                  {atkSlot?.ability && <span className="adv-simple-tag">{atkSlot.ability}</span>}
-                  {(atkSlot?.natPlus || atkSlot?.natMinus) && (
-                    <span className="adv-simple-tag adv-simple-nature">
-                      {atkSlot?.natPlus && <span className="boosted-text">+{NATURE_STAT_LABELS[atkSlot.natPlus]}</span>}
-                      {atkSlot?.natPlus && atkSlot?.natMinus && ' '}
-                      {atkSlot?.natMinus && <span className="dropped-text">-{NATURE_STAT_LABELS[atkSlot.natMinus]}</span>}
-                    </span>
-                  )}
-                  {atkSlot && (Object.entries({ hp: atkSlot.sps.hp, df: atkSlot.sps.df, sd: atkSlot.sps.sd, sp: atkSlot.sps.sp, at: atkSlot.sps.at, sa: atkSlot.sps.sa }) as [string, number][])
-                    .filter(([, v]) => v > 0)
-                    .map(([k, v]) => (
-                      <span key={k} className="adv-simple-tag">
-                        {({ hp:'HP', df:'DEF', sd:'SpD', sp:'SPE', at:'ATK', sa:'SpA' } as Record<string,string>)[k]} {v}
-                      </span>
-                    ))
-                  }
-                </div>
-              </div>
-            ) : (
+          {!simplified && (
+            <div className="adv-opponent-header">
               <div className="adv-block">
                 <div className="adv-block-left">
                   <div className="poke-name-info">
@@ -278,8 +271,8 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
                   )}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <MoveSlotDiv slot={slots[0] ?? null} />
           <MoveSlotDiv slot={slots[1] ?? null} />
           <MoveSlotDiv slot={slots[2] ?? null} />
@@ -300,41 +293,16 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
             </div>
           )}
         </td>
-        <td>
-          <div className="adv-opponent-header">
-            {simplified ? (
-              <div className="adv-block-simple">
-                <div className="poke-name-info">
-                  <img className="adv-sprite" src={spriteUrl(row.name)} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
-                  <strong>{row.name}</strong>
-                  {usage !== undefined && (
-                    <span style={{ fontSize:10, color:'var(--muted)', fontFamily:"'IBM Plex Mono',monospace", flexShrink:0 }}>
-                      {usage.toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-                <div className="adv-simple-info">
-                  {currentAbility && (
-                    <span className="adv-simple-tag">{currentAbility}</span>
-                  )}
-                  {(row.advNatPlus || row.advNatMinus) && (
-                    <span className="adv-simple-tag adv-simple-nature">
-                      {row.advNatPlus && <span className="boosted-text">+{NATURE_STAT_LABELS[row.advNatPlus]}</span>}
-                      {row.advNatPlus && row.advNatMinus && ' '}
-                      {row.advNatMinus && <span className="dropped-text">-{NATURE_STAT_LABELS[row.advNatMinus]}</span>}
-                    </span>
-                  )}
-                  {(Object.entries(spMap) as [string, number][])
-                    .filter(([, v]) => v > 0)
-                    .map(([k, v]) => (
-                      <span key={k} className="adv-simple-tag">
-                        {({ hp:'HP', df:'DEF', sd:'SpD', sp:'SPE', at:'ATK', sa:'SpA' } as Record<string,string>)[k]} {v}
-                      </span>
-                    ))
-                  }
-                </div>
-              </div>
-            ) : (
+        <td className="matchup-def-td">
+          {onRemove && (
+            <button
+              className="matchup-remove-btn"
+              onClick={e => { e.stopPropagation(); onRemove() }}
+              title="Retirer"
+            >×</button>
+          )}
+          {!simplified && (
+            <div className="adv-opponent-header">
               <div className="adv-block">
                 <div className="adv-block-left">
                   <div className="poke-name-info">
@@ -362,11 +330,37 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-          {defSlots.length > 0
-            ? defSlots.map((s, i) => <MoveSlotDiv key={i} slot={s} mirrored />)
-            : <span className="adv-moves-empty">—</span>}
+            </div>
+          )}
+          {defMoves.length > 0 ? (
+            <div className="def-moves-grid">
+              {(() => {
+                const half = Math.ceil(defMoves.length / 2)
+                const col1 = defMoves.slice(0, half)
+                const col2 = defMoves.slice(half)
+                const ordered = col1.flatMap((m, i) => col2[i] !== undefined ? [m, col2[i]] : [m])
+                return ordered
+              })().map((m, i) => {
+                const dmgClass = !m.calc ? '' :
+                  m.calc.minPct >= 100 ? ' ohko' :
+                  m.calc.maxPct >= 100 ? ' ko-poss' :
+                  m.calc.minPct >= 50  ? ' ko-mid' :
+                  m.calc.minPct >= 25  ? ' ko' :
+                  ' ko-low'
+                return (
+                  <div key={i} className={'def-move-entry' + dmgClass}>
+                    <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
+                    <span className="def-move-name">{m.name}</span>
+                    {m.immune
+                      ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
+                      : m.calc
+                      ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%</span>
+                      : null}
+                  </div>
+                )
+              })}
+            </div>
+          ) : <span className="adv-moves-empty">—</span>}
         </td>
       </tr>
     </>

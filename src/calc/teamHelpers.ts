@@ -9,6 +9,10 @@ export function getEffectivePokeName(slot: TeamSlot): string {
   return slot.megaForme || slot.pokemon
 }
 
+export function getPokeNameFromId(id: string): string {
+  return id.replace(/#\d+$/, '')
+}
+
 export function getBaseNameForCC(pokeName: string): string {
   if (!pokeName) return pokeName
   if (pokeName.startsWith('Mega ')) {

@@ -3,13 +3,13 @@ import { useAppState } from '../context/AppContext'
 import { POKE_DATA } from '../data/pokeData'
 import { getUsage, useUsageLoaded } from './useUsageData'
 import { getStats } from '../calc/statCalc'
-import { getEffectivePokeName } from '../calc/teamHelpers'
+import { getEffectivePokeName, getPokeNameFromId } from '../calc/teamHelpers'
 import { buildTableRow } from '../calc/damageCalc'
 import type { TableRow } from '../types'
 
 export function useCalc() {
   const { state, dispatch } = useAppState()
-  const { team, selectedSlot, weather, terrain, advStats, gravity, battleFormat, tailwind, helpingHand, auroraVeil, reflect, lightScreen, advAuroraVeil, advReflect, advLightScreen } = state
+  const { team, selectedSlot, weather, terrain, advStats, gravity, battleFormat, tailwind, helpingHand, auroraVeil, reflect, lightScreen, advAuroraVeil, advReflect, advLightScreen, matchupCalcList } = state
   const usageLoaded = useUsageLoaded()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -49,6 +49,20 @@ export function useCalc() {
       }
 
       dispatch({ type: 'SET_TABLE_DATA', tableData })
+
+      const matchupRows: TableRow[] = matchupCalcList.flatMap(id => {
+        const pokeName = getPokeNameFromId(id)
+        const defData = POKE_DATA[pokeName]
+        if (!defData?.bs) return []
+        const idAdv = advStats[id]
+        const idAdvStats = idAdv ? { [pokeName]: idAdv } : {}
+        const row = buildTableRow(slot, atkStats, pokeName, defData, idAdvStats, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind)
+        if (!row) return []
+        row.id = id
+        row.usage = getUsage(pokeName)
+        return [row]
+      })
+      dispatch({ type: 'SET_MATCHUP_ROWS', matchupRows })
     }, 150)
 
     return () => {
@@ -78,6 +92,7 @@ export function useCalc() {
     advReflect,
     advLightScreen,
     advStats,
+    matchupCalcList,
     usageLoaded,
   ])
 }

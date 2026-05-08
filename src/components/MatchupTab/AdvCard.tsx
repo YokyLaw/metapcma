@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { useAppState } from "../../context/AppContext";
 import { POKE_DATA } from "../../data/pokeData";
 import { getMoveData } from "../../calc/moveHelpers";
@@ -17,6 +17,7 @@ import {
   itemSpriteUrl,
   getBaseNameForCC,
   getMegaOptions,
+  getPokeNameFromId,
 } from "../../calc/teamHelpers";
 import { calcStat } from "../../calc/statCalc";
 import { getAbilityDesc } from "../../hooks/useAbilityDesc";
@@ -271,7 +272,8 @@ const NAT_MINUS_OPTIONS: SearchOption[] = NATURE_STATS.map((s) => ({
 
 export default function AdvCard() {
   const { state, dispatch } = useAppState();
-  const pokeName = state.matchupAdvName || "";
+  const id = state.matchupAdvName || "";
+  const pokeName = getPokeNameFromId(id);
   const {
     ccAbilities,
     ccMoves,
@@ -308,8 +310,8 @@ export default function AdvCard() {
     pokeName === "Aegislash" || pokeName === "Aegislash-Blade";
   const advPokeData = pokeName ? POKE_DATA[pokeName] : null;
 
-  const adv = state.advStats[pokeName] || {};
-  const advBoosts = state.advBoosts[pokeName] || {};
+  const adv = state.advStats[id] || {};
+  const advBoosts = state.advBoosts[id] || {};
   const baseAdvPokeData = isMegaRow ? POKE_DATA[baseName] : null;
 
   function getBaseStatChange(key: string): number {
@@ -336,9 +338,9 @@ export default function AdvCard() {
   const advNatPlus = adv.natPlus || "";
   const advNatMinus = adv.natMinus || "";
   const advAbility = extractName((adv.ability as unknown) || "");
-  const advMoves = state.advMoves[pokeName] ?? ["", "", "", ""];
+  const advMoves = state.advMoves[id] ?? ["", "", "", ""];
   const advItem =
-    extractName((state.advItems[pokeName] as unknown) || "") || "(No Item)";
+    extractName((state.advItems[id] as unknown) || "") || "(No Item)";
 
   const megaOwnAbility = isMegaRow ? (POKE_DATA[pokeName]?.ab ?? "") : "";
   const megaOwnAbilities = useMemo(
@@ -470,7 +472,7 @@ export default function AdvCard() {
     });
     dispatch({
       type: "APPLY_ADV_COMMON",
-      pokeName,
+      pokeName: id,
       ccAbility: topAbility,
       ccItem: topItem,
       ccNatPlus: ccNature?.natPlus || "",
@@ -479,6 +481,26 @@ export default function AdvCard() {
       ccMoves: moves4,
     });
   }
+
+  const autoAppliedRef = useRef<Set<string>>(new Set());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!id || !isLoaded) return;
+    if (autoAppliedRef.current.has(id)) return;
+    if (state.advStats[id]) return;
+    autoAppliedRef.current.add(id);
+    handleApplyCommonSet();
+  }, [id, isLoaded]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isMegaRow || !id) return;
+    if (megaOwnAbility && adv.ability !== megaOwnAbility)
+      dispatch({ type: "SET_ADV_ABILITY", pokeName: id, value: megaOwnAbility });
+    const megaStone = megaOptions?.[pokeName];
+    if (megaStone && state.advItems[id] !== megaStone)
+      dispatch({ type: "SET_ADV_ITEM", pokeName: id, value: megaStone });
+  }, [isMegaRow, id]);
 
   function buildShowdownText(): string {
     const natureName =
@@ -585,9 +607,12 @@ export default function AdvCard() {
           <SearchSelect
             value={baseName}
             options={advPokeOptions}
-            onChange={(name) =>
-              dispatch({ type: "SET_MATCHUP_ADV", pokeName: name })
-            }
+            onChange={(name) => {
+              let nextId = name;
+              let count = 2;
+              while (state.matchupCalcList.includes(nextId)) nextId = `${name}#${count++}`;
+              dispatch({ type: "SET_MATCHUP_ADV", pokeName: nextId });
+            }}
             placeholder="— Choisir adversaire —"
             maxUnfiltered={60}
           />
@@ -664,19 +689,20 @@ export default function AdvCard() {
               value={currentAbility}
               options={abilityOptions}
               onChange={(v) =>
-                dispatch({ type: "SET_ADV_ABILITY", pokeName, value: v })
+                dispatch({ type: "SET_ADV_ABILITY", pokeName: id, value: v })
               }
               placeholder="— Talent —"
               getDescription={getAbilityDesc}
-              disabled={abilityOptions.length <= 1}
+              disabled={isMegaRow || abilityOptions.length <= 1}
               className="search-select--fixed"
             />
             <SearchSelect
               value={advItem}
               options={itemOptions}
               onChange={(v) =>
-                dispatch({ type: "SET_ADV_ITEM", pokeName, value: v })
+                dispatch({ type: "SET_ADV_ITEM", pokeName: id, value: v })
               }
+              disabled={isMegaRow}
               className="search-select--fixed"
             />
             <SearchSelect
@@ -685,7 +711,7 @@ export default function AdvCard() {
               onChange={(v) =>
                 dispatch({
                   type: "SET_ADV_NATURE",
-                  pokeName,
+                  pokeName: id,
                   field: "natPlus",
                   value: v,
                 })
@@ -698,7 +724,7 @@ export default function AdvCard() {
               onChange={(v) =>
                 dispatch({
                   type: "SET_ADV_NATURE",
-                  pokeName,
+                  pokeName: id,
                   field: "natMinus",
                   value: v,
                 })
@@ -715,7 +741,7 @@ export default function AdvCard() {
             {STAT_KEYS.map((key, i) => (
               <AdvStatItem
                 key={key}
-                pokeName={pokeName}
+                pokeName={id}
                 statKey={key}
                 statLabel={STAT_LABELS[i]}
                 spValue={spMap[key] ?? 0}
@@ -740,7 +766,7 @@ export default function AdvCard() {
               return (
                 <AdvMoveSlot
                   key={mi}
-                  pokeName={pokeName}
+                  pokeName={id}
                   moveIdx={mi}
                   value={mv}
                   options={available}

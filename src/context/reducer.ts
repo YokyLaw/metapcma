@@ -91,6 +91,8 @@ export interface AppState {
   filterKO: '' | 'ohko' | 'ko'
   showLowUsage: boolean
   matchupAdvName: string | null
+  matchupCalcList: string[]
+  matchupRows: TableRow[]
   slotNotes: Record<number, string>
   advMoves: Record<string, [string, string, string, string]>
   advItems: Record<string, string>
@@ -133,6 +135,8 @@ export const initialState: AppState = {
   filterKO: '',
   showLowUsage: false,
   matchupAdvName: null,
+  matchupCalcList: [],
+  matchupRows: [],
   slotNotes: {},
   advMoves: {},
   advItems: {},
@@ -186,6 +190,9 @@ export type Action =
   | { type: 'TOGGLE_ADV_AUTO'; pokeName: string; ccAbility: string; ccItem: string; ccNatPlus: string; ccNatMinus: string; ccSps: Record<string, number> | null; ccMoves: [string, string, string, string] }
   | { type: 'SET_ADV_BOOST'; pokeName: string; statKey: string; value: number }
   | { type: 'APPLY_ADV_COMMON'; pokeName: string; ccAbility: string; ccItem: string; ccNatPlus: string; ccNatMinus: string; ccSps: Record<string, number> | null; ccMoves: [string, string, string, string] }
+  | { type: 'ADD_TO_MATCHUP_CALC'; pokeName: string }
+  | { type: 'REMOVE_FROM_MATCHUP_CALC'; pokeName: string }
+  | { type: 'SET_MATCHUP_ROWS'; matchupRows: TableRow[] }
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -199,7 +206,10 @@ export function appReducer(state: AppState, action: Action): AppState {
             moves: ((slot as unknown as Record<string, unknown>).moves as unknown[] ?? []).map(m => extractStr(m)) as [string, string, string, string],
           }))
         : state.team
-      return { ...state, ...action.payload, team, tableData: [] }
+      const matchupCalcList = Array.isArray(action.payload.matchupCalcList)
+        ? action.payload.matchupCalcList
+        : state.matchupCalcList
+      return { ...state, ...action.payload, team, tableData: [], matchupCalcList }
     }
 
     case 'SELECT_SLOT':
@@ -573,6 +583,23 @@ export function appReducer(state: AppState, action: Action): AppState {
         advItems: { ...state.advItems, [action.pokeName]: action.ccItem || '(No Item)' },
       }
     }
+
+    case 'ADD_TO_MATCHUP_CALC': {
+      const id = action.pokeName
+      if (state.matchupCalcList.includes(id)) return state
+      const newList = [...state.matchupCalcList, id]
+      const base = id.replace(/#\d+$/, '')
+      let nextId = base
+      let count = 2
+      while (newList.includes(nextId)) nextId = `${base}#${count++}`
+      return { ...state, matchupCalcList: newList, matchupAdvName: nextId }
+    }
+
+    case 'REMOVE_FROM_MATCHUP_CALC':
+      return { ...state, matchupCalcList: state.matchupCalcList.filter(n => n !== action.pokeName) }
+
+    case 'SET_MATCHUP_ROWS':
+      return { ...state, matchupRows: action.matchupRows }
 
     case 'RESET_ADV': {
       const resetStats: Partial<AdvOverride> = {

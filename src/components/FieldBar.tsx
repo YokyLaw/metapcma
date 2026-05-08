@@ -7,17 +7,19 @@ import '../styles/fieldBar.css'
 
 export default function FieldBar({ className, hideDivers }: { className?: string; hideDivers?: boolean } = {}) {
   const { state, dispatch } = useAppState()
+  const weatherOpts = hideDivers ? WEATHER_OPTIONS.filter(o => o.val !== '') : WEATHER_OPTIONS
+  const terrainOpts = hideDivers ? TERRAIN_OPTIONS.filter(o => o.val !== '') : TERRAIN_OPTIONS
 
   return (
     <div className={`field-bar${className ? ' ' + className : ''}`}>
       <div className="field-row">
         <span className="field-label">Météo</span>
         <div className="field-group">
-          {WEATHER_OPTIONS.map(o => (
+          {weatherOpts.map(o => (
             <button
               key={o.val}
               className={'field-btn' + (state.weather === o.val ? ' active' : '')}
-              onClick={() => dispatch({ type: 'SET_WEATHER', weather: o.val as Weather })}
+              onClick={() => dispatch({ type: 'SET_WEATHER', weather: (hideDivers && state.weather === o.val ? '' : o.val) as Weather })}
             >
               {o.label}
             </button>
@@ -28,11 +30,11 @@ export default function FieldBar({ className, hideDivers }: { className?: string
       <div className="field-row">
         <span className="field-label">Terrain</span>
         <div className="field-group">
-          {TERRAIN_OPTIONS.map(o => (
+          {terrainOpts.map(o => (
             <button
               key={o.val}
               className={'field-btn' + (state.terrain === o.val ? ' active' : '')}
-              onClick={() => dispatch({ type: 'SET_TERRAIN', terrain: o.val as Terrain })}
+              onClick={() => dispatch({ type: 'SET_TERRAIN', terrain: (hideDivers && state.terrain === o.val ? '' : o.val) as Terrain })}
             >
               {o.label}
             </button>

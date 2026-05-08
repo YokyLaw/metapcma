@@ -59,11 +59,13 @@ export function useAdvCC(pokeName: string): AdvCCResult {
   const isMegaRow = pokeName !== baseName
 
   const [data, setData] = useState<AdvCCData>(cache.get(pokeName) ?? EMPTY)
+  const [loadedName, setLoadedName] = useState(cache.has(pokeName) ? pokeName : '')
 
   useEffect(() => {
-    if (!pokeName) { setData(EMPTY); return }
+    if (!pokeName) { setData(EMPTY); setLoadedName(''); return }
     const cached = cache.get(pokeName)
-    if (cached) { setData(cached); return }
+    if (cached) { setData(cached); setLoadedName(pokeName); return }
+    setLoadedName('')
     if (fetching.has(pokeName)) return
     fetching.add(pokeName)
 
@@ -80,6 +82,7 @@ export function useAdvCC(pokeName: string): AdvCCResult {
             const result: AdvCCData = { ...EMPTY, allAbilities }
             cache.set(pokeName, result)
             setData(result)
+            setLoadedName(pokeName)
           }
           return
         }
@@ -104,10 +107,11 @@ export function useAdvCC(pokeName: string): AdvCCResult {
         const result: AdvCCData = { ccAbilities, ccMoves: allMoves, ccItems, ccNature, ccSps, allAbilities }
         cache.set(pokeName, result)
         setData(result)
+        setLoadedName(pokeName)
       })
       .catch(() => {})
       .finally(() => { fetching.delete(pokeName) })
   }, [pokeName])
 
-  return { ...data, isLoaded: cache.has(pokeName) }
+  return { ...data, isLoaded: loadedName === pokeName }
 }

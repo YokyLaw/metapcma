@@ -11,7 +11,7 @@ const PERSIST_KEYS: (keyof AppState)[] = [
   'advTailwind', 'advHelpingHand', 'advAuroraVeil', 'advReflect', 'advLightScreen',
   'battleFormat',
   'advStats', 'sortKey', 'sortAsc', 'filterType', 'filterKO',
-  'showLowUsage', 'matchupAdvName', 'slotNotes',
+  'showLowUsage', 'matchupAdvName', 'matchupCalcList', 'slotNotes',
   'advMoves', 'advItems', 'advAutoSet', 'advPreAutoSet', 'advBoosts',
 ]
 

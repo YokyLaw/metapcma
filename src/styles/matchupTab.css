@@ -99,16 +99,21 @@
 /* MIDDLE */
 .matchup-middle {
   flex: 1;
-  overflow-y: auto;
   min-width: 0;
   background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.matchup-sticky-bar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg);
+.matchup-sticky-header {
+  flex-shrink: 0;
+}
+
+.matchup-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
 }
 
 .matchup-damage-table {
@@ -211,3 +216,106 @@
 .mainrow.adv-row-clickable { cursor: pointer; }
 .mainrow.adv-row-clickable:hover { background: rgba(255,255,255,0.03); }
 .mainrow.adv-row-selected { background: rgba(99,179,237,0.07); outline: 1px solid rgba(99,179,237,0.3); }
+
+/* Add to Calc button */
+.add-to-calc-btn {
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.add-to-calc-btn:hover:not(:disabled) { opacity: 0.85; }
+.add-to-calc-btn:disabled,
+.add-to-calc-btn.already-added {
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: default;
+}
+
+/* Row-level <th> in matchup table */
+.matchup-row-th {
+  vertical-align: top;
+  padding: 6px 8px;
+  border-right: 1px solid var(--border);
+  min-width: 140px;
+  max-width: 180px;
+  position: relative;
+}
+
+.matchup-def-td {
+  position: relative;
+}
+
+.def-moves-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 6px;
+  padding: 4px 6px;
+}
+
+.def-move-entry {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.def-move-name {
+  font-size: 11px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.def-move-pct {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  flex-shrink: 0;
+}
+
+.def-dmg-pct {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.def-move-entry.ohko    .def-dmg-pct { color: var(--success); font-weight: 700; }
+.def-move-entry.ko-poss .def-dmg-pct { color: #c9a227; font-weight: 600; }
+.def-move-entry.ko-mid  .def-dmg-pct { color: var(--text); }
+.def-move-entry.ko      .def-dmg-pct { color: #e07820; }
+.def-move-entry.ko-low  .def-dmg-pct { color: var(--danger); }
+.def-move-entry .adv-move-immune { color: var(--muted); font-style: italic; }
+
+.matchup-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+.matchup-remove-btn:hover { color: #e07070; }
+
+/* Attacker info in thead first-th */
+.matchup-th-set {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}

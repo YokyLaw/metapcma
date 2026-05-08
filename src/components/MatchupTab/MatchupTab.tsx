@@ -5,6 +5,7 @@ import { spriteUrl } from '../../calc/teamHelpers'
 import PokemonCard from '../TeamPanel/PokemonCard'
 import MatchupTable from './MatchupTable'
 import AdvCard from './AdvCard'
+import FieldBar from '../FieldBar'
 import '../../styles/matchupTab.css'
 import '../../styles/fieldBar.css'
 
@@ -97,11 +98,35 @@ export default function MatchupTab() {
 
         {/* MIDDLE — matchup table */}
         <div className="matchup-middle">
-          <MatchupTable />
+          <div className="matchup-sticky-header">
+            <FieldBar className="field-bar--inline" hideDivers />
+          </div>
+          <div className="matchup-scroll">
+            <MatchupTable />
+          </div>
         </div>
 
         {/* RIGHT — adversary detail card */}
         <div className="matchup-right">
+          {state.matchupAdvName && (
+            <button
+              className="add-to-calc-btn"
+              onClick={() => {
+                const currentId = state.matchupAdvName!
+                if (!state.matchupCalcList.includes(currentId)) {
+                  dispatch({ type: 'ADD_TO_MATCHUP_CALC', pokeName: currentId })
+                } else {
+                  const base = currentId.replace(/#\d+$/, '')
+                  let nextId = base
+                  let count = 2
+                  while (state.matchupCalcList.includes(nextId)) nextId = `${base}#${count++}`
+                  dispatch({ type: 'SET_MATCHUP_ADV', pokeName: nextId })
+                }
+              }}
+            >
+              Add to Calc
+            </button>
+          )}
           <AdvCard />
           <div className="matchup-field">
             <div className="field-row">
