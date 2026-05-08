@@ -2,6 +2,17 @@
   grid-column: 2;
   grid-row: 1;
   background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.results-sticky-header {
+  flex-shrink: 0;
+}
+
+.results-scroll {
+  flex: 1;
   overflow-y: auto;
   padding: 16px 20px;
 }
@@ -166,6 +177,7 @@
   white-space: nowrap;
   width: 1px;
 }
+.damage-table th:nth-child(2) { text-align: center; }
 .damage-table th.sortable { cursor: pointer; user-select: none; }
 .damage-table th.sortable:hover { color: var(--text); }
 .damage-table th.sorted { color: var(--accent); cursor: pointer; user-select: none; }
@@ -325,7 +337,8 @@
 .adv-move-name {
   font-weight: 500;
   flex: 1;
-  min-width: 0;
+  min-width: 90px;
+  min-height: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -345,13 +358,16 @@
 
 /* Speed tier column */
 .speed-cell {
-  vertical-align: middle;
+  width: 110px;
   white-space: nowrap;
+  vertical-align: middle;
+  text-align: center;
   padding: 5px 10px;
 }
 .speed-compare {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;

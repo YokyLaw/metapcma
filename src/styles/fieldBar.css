@@ -1,51 +1,3 @@
-.app {
-  display: grid;
-  grid-template-columns: 76px 1fr;
-  grid-template-rows: 1fr auto;
-  height: calc(100vh - 58px);
-  gap: 0;
-}
-
-/* Calc left sidebar */
-.calc-sidebar {
-  grid-column: 1;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  overflow: hidden;
-}
-
-.calc-slot-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.15s;
-  padding: 4px;
-  position: relative;
-}
-.calc-slot-btn:last-child { border-bottom: none; }
-.calc-slot-btn:hover { background: var(--card); }
-.calc-slot-btn.active {
-  background: var(--slot-active);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-.slot-sprite-wrap {
-  position: relative;
-  display: inline-flex;
-}
-.calc-slot-btn img:not(.slot-stone-overlay) {
-  height: 64px;
-  width: auto;
-  image-rendering: pixelated;
-}
-
 /* FieldBar — full-width horizontal bar at bottom */
 .field-bar {
   grid-column: 1 / -1;
@@ -95,3 +47,10 @@
 }
 .field-btn:hover { border-color: var(--accent); color: var(--text); }
 .field-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+.field-bar--inline {
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 6px 10px;
+}

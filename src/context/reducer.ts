@@ -70,6 +70,18 @@ export interface AppState {
   weather: Weather
   terrain: Terrain
   tailwind: boolean
+  trickRoom: boolean
+  gravity: boolean
+  helpingHand: boolean
+  auroraVeil: boolean
+  reflect: boolean
+  lightScreen: boolean
+  advTailwind: boolean
+  advHelpingHand: boolean
+  advAuroraVeil: boolean
+  advReflect: boolean
+  advLightScreen: boolean
+  battleFormat: 'singles' | 'doubles'
   advStats: Record<string, Partial<AdvOverride>>
   tableData: TableRow[]
   sortKey: SortKey
@@ -78,7 +90,6 @@ export interface AppState {
   filterType: string
   filterKO: '' | 'ohko' | 'ko'
   showLowUsage: boolean
-  favorites: string[]
   matchupAdvName: string | null
   slotNotes: Record<number, string>
   advMoves: Record<string, [string, string, string, string]>
@@ -101,6 +112,18 @@ export const initialState: AppState = {
   weather: '',
   terrain: '',
   tailwind: false,
+  trickRoom: false,
+  gravity: false,
+  helpingHand: false,
+  auroraVeil: false,
+  reflect: false,
+  lightScreen: false,
+  advTailwind: false,
+  advHelpingHand: false,
+  advAuroraVeil: false,
+  advReflect: false,
+  advLightScreen: false,
+  battleFormat: 'doubles' as const,
   advStats: {},
   tableData: [],
   sortKey: 'usage',
@@ -109,7 +132,6 @@ export const initialState: AppState = {
   filterType: '',
   filterKO: '',
   showLowUsage: false,
-  favorites: [],
   matchupAdvName: null,
   slotNotes: {},
   advMoves: {},
@@ -134,6 +156,18 @@ export type Action =
   | { type: 'SET_WEATHER'; weather: Weather }
   | { type: 'SET_TERRAIN'; terrain: Terrain }
   | { type: 'SET_TAILWIND'; value: boolean }
+  | { type: 'SET_TRICK_ROOM'; value: boolean }
+  | { type: 'SET_GRAVITY'; value: boolean }
+  | { type: 'SET_HELPING_HAND'; value: boolean }
+  | { type: 'SET_AURORA_VEIL'; value: boolean }
+  | { type: 'SET_REFLECT'; value: boolean }
+  | { type: 'SET_LIGHT_SCREEN'; value: boolean }
+  | { type: 'SET_ADV_TAILWIND'; value: boolean }
+  | { type: 'SET_ADV_HELPING_HAND'; value: boolean }
+  | { type: 'SET_ADV_AURORA_VEIL'; value: boolean }
+  | { type: 'SET_ADV_REFLECT'; value: boolean }
+  | { type: 'SET_ADV_LIGHT_SCREEN'; value: boolean }
+  | { type: 'SET_BATTLE_FORMAT'; value: 'singles' | 'doubles' }
   | { type: 'SET_ADV_STAT'; pokeName: string; statKey: 'sp_hp' | 'sp_df' | 'sp_sd' | 'sp_sp' | 'sp_at' | 'sp_sa'; value: number }
   | { type: 'SET_ADV_NATURE'; pokeName: string; field: 'natPlus' | 'natMinus'; value: string }
   | { type: 'SET_ADV_ABILITY'; pokeName: string; value: string }
@@ -144,7 +178,6 @@ export type Action =
   | { type: 'SET_FILTER_TYPE'; value: string }
   | { type: 'SET_FILTER_KO'; value: '' | 'ohko' | 'ko' }
   | { type: 'SET_SHOW_LOW_USAGE'; value: boolean }
-  | { type: 'TOGGLE_FAVORITE'; pokeName: string }
   | { type: 'SET_MATCHUP_ADV'; pokeName: string | null }
   | { type: 'SET_SLOT_NOTES'; slot: number; notes: string }
   | { type: 'SET_ADV_MOVE'; pokeName: string; moveIdx: number; value: string }
@@ -333,6 +366,42 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'SET_TAILWIND':
       return { ...state, tailwind: action.value }
 
+    case 'SET_TRICK_ROOM':
+      return { ...state, trickRoom: action.value }
+
+    case 'SET_GRAVITY':
+      return { ...state, gravity: action.value }
+
+    case 'SET_HELPING_HAND':
+      return { ...state, helpingHand: action.value }
+
+    case 'SET_AURORA_VEIL':
+      return { ...state, auroraVeil: action.value }
+
+    case 'SET_REFLECT':
+      return { ...state, reflect: action.value }
+
+    case 'SET_LIGHT_SCREEN':
+      return { ...state, lightScreen: action.value }
+
+    case 'SET_ADV_TAILWIND':
+      return { ...state, advTailwind: action.value }
+
+    case 'SET_ADV_HELPING_HAND':
+      return { ...state, advHelpingHand: action.value }
+
+    case 'SET_ADV_AURORA_VEIL':
+      return { ...state, advAuroraVeil: action.value }
+
+    case 'SET_ADV_REFLECT':
+      return { ...state, advReflect: action.value }
+
+    case 'SET_ADV_LIGHT_SCREEN':
+      return { ...state, advLightScreen: action.value }
+
+    case 'SET_BATTLE_FORMAT':
+      return { ...state, battleFormat: action.value }
+
     case 'SET_ADV_STAT': {
       const prev = state.advStats[action.pokeName] || {}
       const currentAdvSps: Record<string, number> = {
@@ -400,16 +469,6 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'SET_SHOW_LOW_USAGE':
       return { ...state, showLowUsage: action.value }
 
-    case 'TOGGLE_FAVORITE': {
-      const already = state.favorites.includes(action.pokeName)
-      return {
-        ...state,
-        favorites: already
-          ? state.favorites.filter(n => n !== action.pokeName)
-          : [...state.favorites, action.pokeName],
-        matchupAdvName: already && state.matchupAdvName === action.pokeName ? null : state.matchupAdvName,
-      }
-    }
 
     case 'SET_MATCHUP_ADV':
       return { ...state, matchupAdvName: action.pokeName }

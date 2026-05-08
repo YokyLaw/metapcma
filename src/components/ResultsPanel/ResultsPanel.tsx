@@ -1,6 +1,8 @@
 import { useAppState } from '../../context/AppContext'
 import { getEffectivePokeName } from '../../calc/teamHelpers'
 import DamageTable from './DamageTable'
+import FilterBar from './FilterBar'
+import FieldBar from '../FieldBar'
 import '../../styles/resultsPanel.css'
 
 export default function ResultsPanel() {
@@ -26,11 +28,16 @@ export default function ResultsPanel() {
 
   return (
     <div className="results-panel">
-      <div className="results-header">
-        <div className="results-title">{effectiveName}</div>
+      <div className="results-sticky-header">
+        <FilterBar />
+        <FieldBar className="field-bar--inline" hideDivers />
       </div>
-
-      <DamageTable />
+      <div className="results-scroll">
+        <div className="results-header">
+          <div className="results-title">{effectiveName}</div>
+        </div>
+        <DamageTable />
+      </div>
     </div>
   )
 }

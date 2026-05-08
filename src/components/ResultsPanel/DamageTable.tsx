@@ -2,7 +2,6 @@ import { useAppState } from '../../context/AppContext'
 import { extractName } from '../../hooks/useCC'
 import { useTableFilter } from '../../hooks/useTableFilter'
 import type { TableRow, SortKey } from '../../types'
-import FilterBar from './FilterBar'
 import DamageRow from './DamageRow'
 
 interface ExtendedRow extends TableRow {
@@ -43,22 +42,16 @@ export default function DamageTable() {
   }
 
   if (tableData.length === 0) {
-    return (
-      <>
-        <FilterBar />
-        <div className="loading">Sélectionnez au moins une attaque pour calculer les dégâts.</div>
-      </>
-    )
+    return <div className="loading">Sélectionnez au moins une attaque pour calculer les dégâts.</div>
   }
 
   return (
     <>
-      <FilterBar />
       <table className="damage-table">
         <thead>
           <tr>
             <th>OFFENSE</th>
-            <th>SPEEDTIER</th>
+            <th className="speed-cell">SPEEDTIER</th>
             <th>DEFENSE</th>
           </tr>
         </thead>

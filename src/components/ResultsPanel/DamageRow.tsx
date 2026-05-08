@@ -29,7 +29,7 @@ function fmt(pct: number): string {
   return (Math.floor(pct * 10) / 10).toFixed(1)
 }
 
-export function MoveSlotDiv({ slot }: { slot: MoveSlotResult | null }) {
+export function MoveSlotDiv({ slot, mirrored }: { slot: MoveSlotResult | null; mirrored?: boolean }) {
   if (!slot) return <div className="adv-move-row"><span className="adv-moves-empty">—</span></div>
 
   const { calc } = slot
@@ -40,14 +40,31 @@ export function MoveSlotDiv({ slot }: { slot: MoveSlotResult | null }) {
     calc.minPct >= 25  ? ' ko' :
     ' ko-low'
 
+  const pctEl = slot.immune
+    ? <span className="adv-move-pct adv-move-immune">(Immune)</span>
+    : calc ? <span className="adv-move-pct">{fmt(calc.minPct)}%–{fmt(calc.maxPct)}%</span>
+    : null
+  const dot = <span className="type-dot" style={{ background: `var(--${slot.moveType})` }} />
+
+  if (mirrored) {
+    const pctMirrored = slot.immune
+      ? <span className="adv-move-pct adv-move-immune" style={{ flex: 1 }}>(Immune)</span>
+      : calc ? <span className="adv-move-pct" style={{ flex: 1 }}>{fmt(calc.minPct)}%–{fmt(calc.maxPct)}%</span>
+      : <span style={{ flex: 1 }} />
+    return (
+      <div className={'adv-move-row' + pctClass}>
+        {pctMirrored}
+        <span className="adv-move-name" style={{ flex: 'none' }}>{slot.move}</span>
+        {dot}
+      </div>
+    )
+  }
+
   return (
     <div className={'adv-move-row' + pctClass}>
-      <span className="type-dot" style={{ background: `var(--${slot.moveType})` }} />
+      {dot}
       <span className="adv-move-name">{slot.move}</span>
-      {slot.immune
-        ? <span className="adv-move-pct adv-move-immune">(Immune)</span>
-        : calc && <span className="adv-move-pct">{fmt(calc.minPct)}%–{fmt(calc.maxPct)}%</span>
-      }
+      {pctEl}
     </div>
   )
 }
@@ -100,22 +117,20 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
     || ''
 
   const usage = row.usage > 0 ? row.usage : undefined
-  const isFavorite = state.favorites.includes(row.name)
-
   const spMap: Record<string, number> = {
     hp: row.spHP ?? 0, df: row.spDf ?? 0, sd: row.spSd ?? 0,
     sp: row.spSp ?? 0, at: row.spAt ?? 0, sa: row.spSa ?? 0,
   }
-  const { weather, terrain } = state
+  const { weather, terrain, trickRoom, gravity, battleFormat, tailwind, auroraVeil, reflect, lightScreen, advTailwind, advHelpingHand } = state
 
   // Speed comparison
   const atkSlot = state.selectedSlot !== null ? state.team[state.selectedSlot] : null
   const atkPokeData = atkSlot ? POKE_DATA[getEffectivePokeName(atkSlot)] : null
   const atkSpeed = (atkPokeData && atkSlot)
-    ? calcStat(atkPokeData.bs.sp, atkSlot.sps.sp, [atkSlot.natPlus, atkSlot.natMinus], 'sp')
+    ? calcStat(atkPokeData.bs.sp, atkSlot.sps.sp, [atkSlot.natPlus, atkSlot.natMinus], 'sp') * (tailwind ? 2 : 1)
     : null
   const advSpeed = advPokeData
-    ? calcStat(advPokeData.bs.sp, row.spSp ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'sp')
+    ? calcStat(advPokeData.bs.sp, row.spSp ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'sp') * (advTailwind ? 2 : 1)
     : null
 
   const topMoves = useMemo(() => {
@@ -177,14 +192,15 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
       natPlus: atkSlot.natPlus, natMinus: atkSlot.natMinus,
       ability: atkSlot.ability || '',
     }
-    return buildCalcCtx(advFakeSlot, advAtkStats, atkDefPokeData, atkAsDefOverride, weather, terrain)
+    return buildCalcCtx(advFakeSlot, advAtkStats, atkDefPokeData, atkAsDefOverride, weather, terrain, gravity, battleFormat === 'doubles', advHelpingHand, auroraVeil, reflect, lightScreen)
   }, [
     advPokeData, row.name, row.spAt, row.spSa, row.advNatPlus, row.advNatMinus,
     currentAbility, advItemForRow,
     atkPokemon, atkMega, atkAbility, atkNatPlus, atkNatMinus,
     atkSps?.hp, atkSps?.at, atkSps?.df, atkSps?.sa, atkSps?.sd, atkSps?.sp,
-    weather, terrain, simplified,
+    weather, terrain, gravity, battleFormat, simplified, auroraVeil, reflect, lightScreen,
     advBoostsForRow?.at, advBoostsForRow?.df, advBoostsForRow?.sa, advBoostsForRow?.sd, advBoostsForRow?.sp,
+    advHelpingHand,
   ])
 
   const defSlots: (MoveSlotResult | null)[] = useMemo(
@@ -272,13 +288,13 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
         <td className="speed-cell">
           {atkSpeed !== null && advSpeed !== null && (
             <div className="speed-compare">
-              <span className={'speed-val' + (atkSpeed === advSpeed ? ' spd-tie' : ' spd-win')}>
+              <span className={'speed-val' + (atkSpeed === advSpeed ? ' spd-tie' : (trickRoom ? atkSpeed < advSpeed : atkSpeed > advSpeed) ? ' spd-win' : ' spd-lose')}>
                 {atkSpeed}
               </span>
               <span className="spd-arrow">
-                {atkSpeed > advSpeed ? '▶' : atkSpeed < advSpeed ? '◀' : '='}
+                {atkSpeed === advSpeed ? '=' : (trickRoom ? atkSpeed < advSpeed : atkSpeed > advSpeed) ? '▶' : '◀'}
               </span>
-              <span className={'speed-val' + (atkSpeed === advSpeed ? ' spd-tie' : ' spd-lose')}>
+              <span className={'speed-val' + (atkSpeed === advSpeed ? ' spd-tie' : (trickRoom ? advSpeed < atkSpeed : advSpeed > atkSpeed) ? ' spd-win' : ' spd-lose')}>
                 {advSpeed}
               </span>
             </div>
@@ -296,11 +312,6 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
                       {usage.toFixed(1)}%
                     </span>
                   )}
-                  <button
-                    className={'fav-star' + (isFavorite ? ' fav-active' : '')}
-                    onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_FAVORITE', pokeName: row.name }) }}
-                    title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                  >★</button>
                 </div>
                 <div className="adv-simple-info">
                   {currentAbility && (
@@ -334,11 +345,6 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
                         {usage.toFixed(1)}%
                       </span>
                     )}
-                    <button
-                      className={'fav-star' + (isFavorite ? ' fav-active' : '')}
-                      onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_FAVORITE', pokeName: row.name }) }}
-                      title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                    >★</button>
                   </div>
                 </div>
                 <div className="adv-block-right" onClick={e => e.stopPropagation()}>
@@ -359,7 +365,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified }: Pro
             )}
           </div>
           {defSlots.length > 0
-            ? defSlots.map((s, i) => <MoveSlotDiv key={i} slot={s} />)
+            ? defSlots.map((s, i) => <MoveSlotDiv key={i} slot={s} mirrored />)
             : <span className="adv-moves-empty">—</span>}
         </td>
       </tr>

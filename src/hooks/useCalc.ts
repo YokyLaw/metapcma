@@ -9,7 +9,7 @@ import type { TableRow } from '../types'
 
 export function useCalc() {
   const { state, dispatch } = useAppState()
-  const { team, selectedSlot, weather, terrain, advStats } = state
+  const { team, selectedSlot, weather, terrain, advStats, gravity, battleFormat, tailwind, helpingHand, auroraVeil, reflect, lightScreen, advAuroraVeil, advReflect, advLightScreen } = state
   const usageLoaded = useUsageLoaded()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -42,7 +42,7 @@ export function useCalc() {
 
       for (const [defName, defData] of Object.entries(POKE_DATA)) {
         if (!defData?.bs) continue
-        const row = buildTableRow(slot, atkStats, defName, defData, advStats, weather, terrain)
+        const row = buildTableRow(slot, atkStats, defName, defData, advStats, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind)
         if (!row) continue
         row.usage = getUsage(defName)
         tableData.push(row)
@@ -67,6 +67,16 @@ export function useCalc() {
     slot?.moves,
     weather,
     terrain,
+    gravity,
+    tailwind,
+    battleFormat,
+    helpingHand,
+    auroraVeil,
+    reflect,
+    lightScreen,
+    advAuroraVeil,
+    advReflect,
+    advLightScreen,
     advStats,
     usageLoaded,
   ])

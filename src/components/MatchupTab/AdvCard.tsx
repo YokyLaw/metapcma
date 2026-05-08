@@ -480,9 +480,6 @@ export default function AdvCard() {
     });
   }
 
-  const t1 = advPokeData?.t1;
-  const t2 = advPokeData?.t2;
-
   function buildShowdownText(): string {
     const natureName =
       Object.entries(NATURE_DATA).find(
@@ -582,97 +579,7 @@ export default function AdvCard() {
   }
 
   return (
-    <div className="pokemon-card">
-      {advPokeData && (
-        <div className="card-header">
-          <img
-            className="card-sprite"
-            src={spriteUrl(pokeName)}
-            alt=""
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-          <span className="poke-name-display">{pokeName}</span>
-          {t1 && (
-            <span className="type-badge" style={{ background: `var(--${t1})` }}>
-              {t1}
-            </span>
-          )}
-          {t2 && (
-            <span className="type-badge" style={{ background: `var(--${t2})` }}>
-              {t2}
-            </span>
-          )}
-        </div>
-      )}
-
-      {(isAegislash || megaOptions || hasCCData) && pokeName && (
-        <div className="mega-bar">
-          {isAegislash && (
-            <>
-              <span className="mega-label">Formes :</span>
-              <button
-                className={
-                  "mega-btn" + (pokeName === "Aegislash" ? " active" : "")
-                }
-                onClick={() =>
-                  dispatch({ type: "SET_MATCHUP_ADV", pokeName: "Aegislash" })
-                }
-              >
-                Shield
-              </button>
-              <button
-                className={
-                  "mega-btn" + (pokeName === "Aegislash-Blade" ? " active" : "")
-                }
-                onClick={() =>
-                  dispatch({
-                    type: "SET_MATCHUP_ADV",
-                    pokeName: "Aegislash-Blade",
-                  })
-                }
-              >
-                Blade
-              </button>
-            </>
-          )}
-          {megaOptions && (
-            <>
-              <span className="mega-label">Formes :</span>
-              <button
-                className={"mega-btn" + (!isMegaRow ? " active" : "")}
-                onClick={() =>
-                  dispatch({ type: "SET_MATCHUP_ADV", pokeName: baseName })
-                }
-              >
-                Base
-              </button>
-              {Object.keys(megaOptions).map((mf) => (
-                <button
-                  key={mf}
-                  className={"mega-btn" + (pokeName === mf ? " active" : "")}
-                  onClick={() =>
-                    dispatch({ type: "SET_MATCHUP_ADV", pokeName: mf })
-                  }
-                >
-                  {mf}
-                </button>
-              ))}
-            </>
-          )}
-          {hasCCData && (
-            <button
-              className="mega-btn"
-              style={{ marginLeft: "auto" }}
-              onClick={handleApplyCommonSet}
-            >
-              Most Common Set
-            </button>
-          )}
-        </div>
-      )}
-
+    <div className="pokemon-card selected">
       <div className="card-selects">
         <div className="card-selects-full">
           <SearchSelect
@@ -685,6 +592,72 @@ export default function AdvCard() {
             maxUnfiltered={60}
           />
         </div>
+
+        {(isAegislash || megaOptions || hasCCData) && pokeName && (
+          <div className="mega-bar">
+            {isAegislash && (
+              <>
+                <span className="mega-label">Formes :</span>
+                <button
+                  className={
+                    "mega-btn" + (pokeName === "Aegislash" ? " active" : "")
+                  }
+                  onClick={() =>
+                    dispatch({ type: "SET_MATCHUP_ADV", pokeName: "Aegislash" })
+                  }
+                >
+                  Shield
+                </button>
+                <button
+                  className={
+                    "mega-btn" + (pokeName === "Aegislash-Blade" ? " active" : "")
+                  }
+                  onClick={() =>
+                    dispatch({
+                      type: "SET_MATCHUP_ADV",
+                      pokeName: "Aegislash-Blade",
+                    })
+                  }
+                >
+                  Blade
+                </button>
+              </>
+            )}
+            {megaOptions && (
+              <>
+                <span className="mega-label">Formes :</span>
+                <button
+                  className={"mega-btn" + (!isMegaRow ? " active" : "")}
+                  onClick={() =>
+                    dispatch({ type: "SET_MATCHUP_ADV", pokeName: baseName })
+                  }
+                >
+                  Base
+                </button>
+                {Object.keys(megaOptions).map((mf) => (
+                  <button
+                    key={mf}
+                    className={"mega-btn" + (pokeName === mf ? " active" : "")}
+                    onClick={() =>
+                      dispatch({ type: "SET_MATCHUP_ADV", pokeName: mf })
+                    }
+                  >
+                    {mf}
+                  </button>
+                ))}
+              </>
+            )}
+            {hasCCData && (
+              <button
+                className="mega-btn"
+                style={{ marginLeft: "auto" }}
+                onClick={handleApplyCommonSet}
+              >
+                Most Common Set
+              </button>
+            )}
+          </div>
+        )}
         {advPokeData && (
           <>
             <SearchSelect

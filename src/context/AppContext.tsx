@@ -6,9 +6,12 @@ import { appReducer, initialState, type AppState, type Action } from './reducer'
 const STORAGE_KEY = 'metapcma_state'
 
 const PERSIST_KEYS: (keyof AppState)[] = [
-  'team', 'selectedSlot', 'weather', 'terrain', 'tailwind',
+  'team', 'selectedSlot', 'weather', 'terrain', 'tailwind', 'trickRoom', 'gravity',
+  'helpingHand', 'auroraVeil', 'reflect', 'lightScreen',
+  'advTailwind', 'advHelpingHand', 'advAuroraVeil', 'advReflect', 'advLightScreen',
+  'battleFormat',
   'advStats', 'sortKey', 'sortAsc', 'filterType', 'filterKO',
-  'showLowUsage', 'favorites', 'matchupAdvName', 'slotNotes',
+  'showLowUsage', 'matchupAdvName', 'slotNotes',
   'advMoves', 'advItems', 'advAutoSet', 'advPreAutoSet', 'advBoosts',
 ]
 

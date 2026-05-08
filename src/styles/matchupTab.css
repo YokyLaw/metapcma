@@ -67,6 +67,15 @@
   padding: 20px;
 }
 
+.matchup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
 .matchup-notes {
   width: 100%;
   min-height: 90px;
@@ -92,6 +101,13 @@
   flex: 1;
   overflow-y: auto;
   min-width: 0;
+  background: var(--bg);
+}
+
+.matchup-sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background: var(--bg);
 }
 
@@ -139,7 +155,6 @@
   border-left: 1px solid var(--border);
   background: var(--bg);
   padding: 10px;
-  padding-top: 64px;
 }
 
 .matchup-adv-placeholder {
@@ -196,18 +211,3 @@
 .mainrow.adv-row-clickable { cursor: pointer; }
 .mainrow.adv-row-clickable:hover { background: rgba(255,255,255,0.03); }
 .mainrow.adv-row-selected { background: rgba(99,179,237,0.07); outline: 1px solid rgba(99,179,237,0.3); }
-
-/* Favorite star button */
-.fav-star {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 14px;
-  padding: 0 2px;
-  line-height: 1;
-  flex-shrink: 0;
-  transition: color 0.15s, transform 0.1s;
-}
-.fav-star:hover { color: #f5a623; transform: scale(1.15); }
-.fav-star.fav-active { color: #f5a623; }

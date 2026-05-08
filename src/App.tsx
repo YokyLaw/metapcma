@@ -11,7 +11,6 @@ import { prefetchMoveMeta } from './hooks/useMoveMeta'
 import { prefetchUsageData } from './hooks/useUsageData'
 import CalcSidebar from './components/CalcSidebar'
 import ResultsPanel from './components/ResultsPanel/ResultsPanel'
-import FieldBar from './components/FieldBar'
 import TeamBuilderView from './components/TeamBuilderView'
 import MatchupTab from './components/MatchupTab/MatchupTab'
 
@@ -25,10 +24,13 @@ function AppInner() {
       <Header activeTab={tab} onTabChange={setTab} />
       {tab === 'team' && <TeamBuilderView />}
       {tab === 'calc' && (
-        <div className="app">
-          <CalcSidebar />
-          <ResultsPanel />
-          <FieldBar />
+        <div className="matchup-root">
+          <div className="matchup-layout">
+            <CalcSidebar />
+            <div className="matchup-middle">
+              <ResultsPanel />
+            </div>
+          </div>
         </div>
       )}
       {tab === 'matchup' && <MatchupTab />}

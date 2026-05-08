@@ -49,7 +49,8 @@ function getItemBPMod(item: string, moveType: string): number {
   return 1.0
 }
 
-function isGrounded(defT1: string, defT2: string, defAbility: string): boolean {
+function isGrounded(defT1: string, defT2: string, defAbility: string, gravity: boolean): boolean {
+  if (gravity) return true
   if (defT1 === 'Flying' || defT2 === 'Flying') return false
   if (defAbility === 'Levitate' || defAbility === 'Earth Eater') return false
   return true
@@ -75,6 +76,8 @@ export interface CalcCtx {
   defW: number; atkW: number
   attacker: TeamSlot; atkStats: StatMap
   weather: string; terrain: string
+  gravity: boolean; isDoubles: boolean; tailwind: boolean
+  helpingHand: boolean; auroraVeil: boolean; reflect: boolean; lightScreen: boolean
 }
 
 export function buildCalcCtx(
@@ -83,7 +86,14 @@ export function buildCalcCtx(
   defenderData: PokeEntry,
   overrideStats: Partial<AdvOverride> | null,
   weather: string,
-  terrain: string
+  terrain: string,
+  gravity = false,
+  isDoubles = true,
+  helpingHand = false,
+  auroraVeil = false,
+  reflect = false,
+  lightScreen = false,
+  tailwind = false
 ): CalcCtx | null {
   const defNatArr: [string, string] = overrideStats
     ? [overrideStats.natPlus || '', overrideStats.natMinus || '']
@@ -104,7 +114,7 @@ export function buildCalcCtx(
   const atkItem    = attacker.item || ''
   const atkAbility = attacker.ability || atkPokeData.ab || ''
   const defAbility = overrideStats?.ability || defenderData.ab || ''
-  const defIsGrounded = isGrounded(defenderData.t1, defenderData.t2 || '', defAbility)
+  const defIsGrounded = isGrounded(defenderData.t1, defenderData.t2 || '', defAbility, gravity)
   const atkT1 = atkPokeData.t1, atkT2 = atkPokeData.t2 || ''
   const defT1 = defenderData.t1, defT2 = defenderData.t2 || ''
   const defW = defenderData.w || 0
@@ -114,7 +124,8 @@ export function buildCalcCtx(
     defHP, defDfOv, defSdOv, defAtOv, defenderData,
     atkPokeData, atkItem, atkAbility, defAbility, defIsGrounded,
     atkT1, atkT2, defT1, defT2, defW, atkW,
-    attacker, atkStats, weather, terrain,
+    attacker, atkStats, weather, terrain, gravity, isDoubles, tailwind,
+    helpingHand, auroraVeil, reflect, lightScreen,
   }
 }
 
@@ -123,7 +134,8 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
     defHP, defDfOv, defSdOv, defAtOv, defenderData, atkPokeData,
     atkItem, atkAbility, defAbility, defIsGrounded,
     atkT1, atkT2, defT1, defT2, defW, atkW,
-    attacker, atkStats, weather, terrain,
+    attacker, atkStats, weather, terrain, gravity, isDoubles, tailwind,
+    helpingHand, auroraVeil, reflect, lightScreen,
   } = ctx
 
   const md = getMoveData(moveName)
@@ -158,9 +170,11 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
     const ratio = defW > 0 ? atkW / defW : 5
     bp = ratio >= 5 ? 120 : ratio >= 4 ? 100 : ratio >= 3 ? 80 : ratio >= 2 ? 60 : 40
   } else if (moveName === 'Gyro Ball') {
-    bp = Math.min(150, Math.max(1, Math.floor(25 * (defenderData.bs.sp || 1) / (atkPokeData.bs.sp || 1))))
+    const atkSp = (atkPokeData.bs.sp || 1) * (tailwind ? 2 : 1)
+    bp = Math.min(150, Math.max(1, Math.floor(25 * (defenderData.bs.sp || 1) / atkSp)))
   } else if (moveName === 'Electro Ball') {
-    const spRatio = Math.floor((atkPokeData.bs.sp || 1) / (defenderData.bs.sp || 1))
+    const atkSp = (atkPokeData.bs.sp || 1) * (tailwind ? 2 : 1)
+    const spRatio = Math.floor(atkSp / (defenderData.bs.sp || 1))
     bp = spRatio >= 4 ? 150 : spRatio >= 3 ? 120 : spRatio >= 2 ? 80 : spRatio >= 1 ? 60 : 40
   } else if (moveName === 'Acrobatics') {
     bp = (atkItem === '' || atkItem === '(No Item)') ? 110 : 55
@@ -254,7 +268,8 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   if (weather === 'Snow' && (defT1 === 'Ice'  || defT2 === 'Ice')  && moveCat === 'Physical') defMod *= (1/1.5)
 
   // ABILITY IMMUNITIES
-  if (moveType === 'Ground'   && (defAbility === 'Levitate' || defAbility === 'Earth Eater')) return null
+  if (moveType === 'Ground' && defAbility === 'Earth Eater') return null
+  if (moveType === 'Ground' && defAbility === 'Levitate' && !gravity) return null
   if (moveType === 'Fire'     && (defAbility === 'Flash Fire' || defAbility === 'Well-Baked Body')) return null
   if (moveType === 'Water'    && (defAbility === 'Water Absorb' || defAbility === 'Storm Drain' || defAbility === 'Dry Skin')) return null
   if (moveType === 'Electric' && (defAbility === 'Volt Absorb' || defAbility === 'Motor Drive' || defAbility === 'Lightning Rod')) return null
@@ -265,10 +280,17 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   // TYPE EFFECTIVENESS
   let typeEff = getTypeEff(moveType, defT1, defT2)
   if (typeEff === 0) {
-    if (atkAbility === 'Scrappy' && (moveType === 'Normal' || moveType === 'Fighting') && (defT1 === 'Ghost' || defT2 === 'Ghost'))
+    if (atkAbility === 'Scrappy' && (moveType === 'Normal' || moveType === 'Fighting') && (defT1 === 'Ghost' || defT2 === 'Ghost')) {
       typeEff = 1
-    else
+    } else if (gravity && moveType === 'Ground' && (defT1 === 'Flying' || defT2 === 'Flying')) {
+      const chart = TYPE_EFF['Ground'] || {}
+      const e1 = defT1 === 'Flying' ? 1 : (chart[defT1] ?? 1)
+      const e2 = !defT2 || defT2 === 'Flying' ? 1 : (chart[defT2] ?? 1)
+      typeEff = e1 * e2
+      if (typeEff === 0) return null
+    } else {
       return null
+    }
   }
 
   // Wonder Guard: only super-effective moves land
@@ -288,6 +310,10 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   if (atkAbility === 'Tinted Lens' && typeEff < 1)           finalMod *= 2
   if (atkAbility === 'Neuroforce'  && typeEff > 1)           finalMod *= 1.25
   if (atkAbility === 'Sand Force'  && weather === 'Sand' && ['Rock','Ground','Steel'].includes(moveType)) finalMod *= 1.3
+  if (helpingHand) finalMod *= 1.5
+  if (auroraVeil) finalMod *= isDoubles ? 2/3 : 0.5
+  if (reflect && md.category === 'Physical') finalMod *= isDoubles ? 2/3 : 0.5
+  if (lightScreen && md.category === 'Special') finalMod *= isDoubles ? 2/3 : 0.5
 
   // STAB
   const stab = getSTAB(moveType, atkT1, atkT2, atkAbility)
@@ -297,7 +323,7 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   const modifiedDef = Math.floor(defStatRaw * defMod)
   let baseDmg = calcDamage(modifiedAtk, modifiedDef, bp)
 
-  if (md.isSpread) baseDmg = Math.floor(baseDmg * 0.75)
+  if (md.isSpread && isDoubles) baseDmg = Math.floor(baseDmg * 0.75)
 
   const weatherMod = getWeatherMod(moveType, weather, atkItem)
   if (weatherMod !== 1.0) {
@@ -350,7 +376,14 @@ export function buildTableRow(
   advStats: Record<string, Partial<AdvOverride>>,
   weather: string,
   terrain: string,
-  defaultAbility?: string
+  gravity = false,
+  isDoubles = true,
+  defaultAbility?: string,
+  helpingHand = false,
+  auroraVeil = false,
+  reflect = false,
+  lightScreen = false,
+  tailwind = false
 ): TableRow | null {
   if (!attacker.moves.some(m => m)) return null
 
@@ -358,7 +391,7 @@ export function buildTableRow(
   const effectiveOverride = defaultAbility && !override.ability
     ? { ...override, ability: defaultAbility }
     : override
-  const ctx = buildCalcCtx(attacker, atkStats, defData, effectiveOverride, weather, terrain)
+  const ctx = buildCalcCtx(attacker, atkStats, defData, effectiveOverride, weather, terrain, gravity, isDoubles, helpingHand, auroraVeil, reflect, lightScreen, tailwind)
   if (!ctx) return null
 
   let bestResult: CalcResult | null = null
