@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { NATURE_STAT_LABELS } from '../../data/constants'
-import { spriteUrl, getEffectivePokeName, getBaseNameForCC } from '../../calc/teamHelpers'
+import { spriteUrl, itemSpriteUrl, getEffectivePokeName, getBaseNameForCC } from '../../calc/teamHelpers'
 import { POKE_DATA } from '../../data/pokeData'
 import { getMoveData } from '../../calc/moveHelpers'
 import { calcStat, getStats } from '../../calc/statCalc'
@@ -123,7 +123,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
     hp: row.spHP ?? 0, df: row.spDf ?? 0, sd: row.spSd ?? 0,
     sp: row.spSp ?? 0, at: row.spAt ?? 0, sa: row.spSa ?? 0,
   }
-  const { trickRoom, tailwind, advTailwind, weather, terrain, gravity, battleFormat, auroraVeil, reflect, lightScreen, advHelpingHand } = state
+  const { trickRoom, tailwind, advTailwind, weather, terrain, gravity, battleFormat, auroraVeil, reflect, lightScreen, advHelpingHand, advMoves } = state
 
   // Speed comparison
   const atkSlot = state.selectedSlot !== null ? state.team[state.selectedSlot] : null
@@ -138,6 +138,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
   const advKey = row.id || row.name
   const advItemForRow = state.advItems[advKey] || '(No Item)'
   const advBoostsForRow = state.advBoosts[advKey] as BoostMap | undefined
+  const advMovesForRow = (advMoves[advKey] ?? ['', '', '', '']) as [string, string, string, string]
   const atkSps = atkSlot?.sps
   const atkNatPlus = atkSlot?.natPlus ?? ''
   const atkNatMinus = atkSlot?.natMinus ?? ''
@@ -186,8 +187,24 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
     [ccMoves],
   )
 
-  const defMoves = useMemo(() =>
-    top8OffMoves.map(m => {
+  const defMoves = useMemo(() => {
+    if (simplified || useAdvStats) {
+      return advMovesForRow
+        .filter(m => m)
+        .map(moveName => {
+          const md = getMoveData(moveName)
+          const moveType = md?.type ?? 'Normal'
+          const calc = revCtx ? calcOneMoveResult(moveName, revCtx) : null
+          return {
+            name: moveName,
+            percent: 0,
+            moveType,
+            immune: revCtx !== null && calc === null && (md?.bp ?? 0) > 0,
+            calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct } : null,
+          }
+        })
+    }
+    return top8OffMoves.map(m => {
       const md = getMoveData(m.move.name)
       const moveType = md?.type ?? 'Normal'
       const calc = revCtx ? calcOneMoveResult(m.move.name, revCtx) : null
@@ -198,9 +215,8 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
         immune: revCtx !== null && calc === null && (md?.bp ?? 0) > 0,
         calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct } : null,
       }
-    }),
-    [top8OffMoves, revCtx],
-  )
+    })
+  }, [simplified, advMovesForRow, top8OffMoves, revCtx])
   const slots = row.moveResults as (MoveSlotResult | null)[]
 
   return (
@@ -260,15 +276,31 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
                   </div>
                 </div>
                 <div className="adv-block-right">
-                  <div className="adv-sel-cell">
+                  <div className="adv-sel-cell adv-inline-row" style={{ flexWrap: 'nowrap' }}>
                     {atkSlot?.ability && <span className="adv-simple-tag">{atkSlot.ability}</span>}
+                    {atkSlot?.item && atkSlot.item !== '(No Item)' && (
+                      <span className="adv-simple-tag adv-item-tag">
+                        <img className="adv-item-icon" src={itemSpriteUrl(atkSlot.item)} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
+                        {atkSlot.item}
+                      </span>
+                    )}
+                    {(atkSlot?.natPlus || atkSlot?.natMinus) && (
+                      <span className="adv-simple-tag adv-simple-nature">
+                        {atkSlot?.natPlus && <span className="boosted-text">+{NATURE_STAT_LABELS[atkSlot.natPlus]}</span>}
+                        {atkSlot?.natMinus && <span className="dropped-text">-{NATURE_STAT_LABELS[atkSlot.natMinus]}</span>}
+                      </span>
+                    )}
                   </div>
-                  {(atkSlot?.natPlus || atkSlot?.natMinus) && (
-                    <span className="adv-simple-tag adv-simple-nature">
-                      {atkSlot?.natPlus && <span className="boosted-text">+{NATURE_STAT_LABELS[atkSlot.natPlus]}</span>}
-                      {atkSlot?.natMinus && <span className="dropped-text">-{NATURE_STAT_LABELS[atkSlot.natMinus]}</span>}
-                    </span>
-                  )}
+                  <div className="adv-inline-row" style={{ flexWrap: 'nowrap' }}>
+                    {atkSlot && (Object.entries(atkSlot.sps) as [string, number][])
+                      .filter(([, v]) => v > 0)
+                      .map(([k, v]) => (
+                        <span key={k} className="adv-simple-tag">
+                          {({ hp:'HP', df:'DEF', sd:'SpD', sp:'SPE', at:'ATK', sa:'SpA' } as Record<string,string>)[k]} {v}
+                        </span>
+                      ))
+                    }
+                  </div>
                 </div>
               </div>
             </div>
@@ -316,50 +348,87 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
                   </div>
                 </div>
                 <div className="adv-block-right" onClick={e => e.stopPropagation()}>
-                  <div className="adv-sel-cell">
-                    {abilityOptions.length > 0 && (
-                      <SearchSelect
-                        value={currentAbility}
-                        options={abilityOptions}
-                        onChange={v => dispatch({ type: 'SET_ADV_ABILITY', pokeName: row.name, value: v })}
-                        placeholder="— Talent —"
-                        getDescription={getAbilityDesc}
-                        disabled={abilityOptions.length <= 1}
-                      />
+                  <div className="adv-sel-cell adv-inline-row" style={{ flexWrap: 'nowrap' }}>
+                    {currentAbility && <span className="adv-simple-tag">{currentAbility}</span>}
+                    {advItemForRow && advItemForRow !== '(No Item)' && (
+                      <span className="adv-simple-tag adv-item-tag">
+                        <img className="adv-item-icon" src={itemSpriteUrl(advItemForRow)} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
+                        {advItemForRow}
+                      </span>
                     )}
+                    {(row.advNatPlus || row.advNatMinus) && (
+                      <span className="adv-simple-tag adv-simple-nature">
+                        {row.advNatPlus && <span className="boosted-text">+{NATURE_STAT_LABELS[row.advNatPlus]}</span>}
+                        {row.advNatMinus && <span className="dropped-text">-{NATURE_STAT_LABELS[row.advNatMinus]}</span>}
+                      </span>
+                    )}
+                  </div>
+                  <div className="adv-inline-row" style={{ flexWrap: 'nowrap' }}>
+                    {(Object.entries(spMap) as [string, number][])
+                      .filter(([, v]) => v > 0)
+                      .map(([k, v]) => (
+                        <span key={k} className="adv-simple-tag">
+                          {({ hp:'HP', df:'DEF', sd:'SpD', sp:'SPE', at:'ATK', sa:'SpA' } as Record<string,string>)[k]} {v}
+                        </span>
+                      ))
+                    }
                   </div>
                 </div>
               </div>
             </div>
           )}
           {defMoves.length > 0 ? (
-            <div className="def-moves-grid">
-              {(() => {
-                const half = Math.ceil(defMoves.length / 2)
-                const col1 = defMoves.slice(0, half)
-                const col2 = defMoves.slice(half)
-                const ordered = col1.flatMap((m, i) => col2[i] !== undefined ? [m, col2[i]] : [m])
-                return ordered
-              })().map((m, i) => {
-                const dmgClass = !m.calc ? '' :
-                  m.calc.minPct >= 100 ? ' ohko' :
-                  m.calc.maxPct >= 100 ? ' ko-poss' :
-                  m.calc.minPct >= 50  ? ' ko-mid' :
-                  m.calc.minPct >= 25  ? ' ko' :
-                  ' ko-low'
-                return (
-                  <div key={i} className={'def-move-entry' + dmgClass}>
-                    <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
-                    <span className="def-move-name">{m.name}</span>
-                    {m.immune
-                      ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
-                      : m.calc
-                      ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%</span>
-                      : null}
-                  </div>
-                )
-              })}
-            </div>
+            (simplified || useAdvStats) ? (
+              <div className="def-moves-col">
+                {defMoves.map((m, i) => {
+                  const dmgClass = !m.calc ? '' :
+                    m.calc.minPct >= 100 ? ' ohko' :
+                    m.calc.maxPct >= 100 ? ' ko-poss' :
+                    m.calc.minPct >= 50  ? ' ko-mid' :
+                    m.calc.minPct >= 25  ? ' ko' :
+                    ' ko-low'
+                  return (
+                    <div key={i} className={'def-move-entry' + dmgClass}>
+                      {m.immune
+                        ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
+                        : m.calc
+                        ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%</span>
+                        : <span className="def-dmg-pct" />}
+                      <span className="def-move-name">{m.name}</span>
+                      <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="def-moves-grid">
+                {[defMoves.slice(0, 4), defMoves.slice(4)].map((col, ci) =>
+                  col.length > 0 && (
+                    <div key={ci} className="def-moves-col">
+                      {col.map((m, i) => {
+                        const dmgClass = !m.calc ? '' :
+                          m.calc.minPct >= 100 ? ' ohko' :
+                          m.calc.maxPct >= 100 ? ' ko-poss' :
+                          m.calc.minPct >= 50  ? ' ko-mid' :
+                          m.calc.minPct >= 25  ? ' ko' :
+                          ' ko-low'
+                        return (
+                          <div key={i} className={'def-move-entry' + dmgClass}>
+                            <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
+                            <span className="def-move-name">{m.name}</span>
+                            {m.immune
+                              ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
+                              : m.calc
+                              ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%</span>
+                              : null}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                )}
+              </div>
+            )
           ) : <span className="adv-moves-empty">—</span>}
         </td>
       </tr>
