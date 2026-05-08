@@ -42,7 +42,10 @@
       "Bash(python -c ' *)",
       "Bash(rm pika.json)",
       "Bash(curl.exe -sk \"https://www.coupcritique.fr/api/pokemon-name/Landorus-Therian\" -o pika.json)",
-      "Bash(curl.exe -sk \"https://www.coupcritique.fr/api/pokemon-name/Landorus-Therian\")"
+      "Bash(curl.exe -sk \"https://www.coupcritique.fr/api/pokemon-name/Landorus-Therian\")",
+      "Bash(rtk gain *)",
+      "Bash(Get-ChildItem -Force)",
+      "Bash(rtk read *)"
     ]
   }
 }

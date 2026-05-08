@@ -512,8 +512,37 @@
   margin: 8px 8px 4px;
 }
 .teambuilder-team-btns {
-  margin: 8px 16px 4px;
-  max-width: 320px;
+  margin: 8px auto 4px;
+  justify-content: center;
+  width: fit-content;
+}
+.teambuilder-team-btns .import-showdown-btn,
+.teambuilder-team-btns .export-showdown-btn {
+  flex: none;
+  white-space: nowrap;
+  padding: 27px 72px;
+  margin-top: 0;
+  font-size: 15px;
+}
+.clear-team-btn {
+  flex: none;
+  white-space: nowrap;
+  padding: 27px 28px;
+  margin-top: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: #c47f7f;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.clear-team-btn:hover {
+  color: #e09090;
+  border-color: #c47f7f;
 }
 .showdown-btn-group .export-showdown-btn,
 .showdown-btn-group .import-showdown-btn {

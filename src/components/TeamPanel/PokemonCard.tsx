@@ -11,6 +11,7 @@ import type { CCAbilityEntry } from '../../hooks/useCC'
 import { getStats, getItemStatMult } from '../../calc/statCalc'
 import { getItemDesc, getItemList } from '../../hooks/useItemDesc'
 import { getAbilityDesc } from '../../hooks/useAbilityDesc'
+import { MEGA_MAP } from '../../data/megaMap'
 import MegaBar from './MegaBar'
 import MoveSlot from './MoveSlot'
 import SearchSelect from './SearchSelect'
@@ -199,9 +200,21 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
       if (!lines.length) return
       const firstLine = lines[0]
       const atIdx = firstLine.indexOf(' @ ')
-      const pokeName = (atIdx >= 0 ? firstLine.slice(0, atIdx) : firstLine).trim()
+      const pokeName = (atIdx >= 0 ? firstLine.slice(0, atIdx) : firstLine).trim().replace(/ \([MFmf]\)$/, '')
       const item = atIdx >= 0 ? firstLine.slice(atIdx + 3).trim() : '(No Item)'
-      if (!POKE_DATA[pokeName]) return
+      const _showdownToMega: Record<string, { baseName: string; megaName: string; stone: string }> = {}
+      for (const [bn, megas] of Object.entries(MEGA_MAP)) {
+        for (const [mn, st] of Object.entries(megas)) {
+          const rest = mn.slice(5)
+          const parts = rest.split(' ')
+          const key = parts[0] + '-Mega' + (parts.length > 1 ? '-' + parts.slice(1).join('-') : '')
+          _showdownToMega[key] = { baseName: bn, megaName: mn, stone: st }
+        }
+      }
+      const megaInfo = _showdownToMega[pokeName]
+      const resolvedName = megaInfo ? megaInfo.baseName : pokeName
+      if (!POKE_DATA[resolvedName]) return
+      if (usedPokemon.has(resolvedName)) return
       const EV_REVERSE: Record<string, string> = { HP: 'hp', Atk: 'at', Def: 'df', SpA: 'sa', SpD: 'sd', Spe: 'sp' }
       let ability = ''
       let natPlusVal = ''
@@ -224,9 +237,9 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
           moves.push(line.slice(2).trim())
         }
       }
-      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'pokemon', value: pokeName })
-      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'item', value: item })
-      if (ability) dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'ability', value: ability })
+      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'pokemon', value: resolvedName })
+      if (!megaInfo) dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'item', value: item })
+      if (!megaInfo && ability) dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'ability', value: ability })
       dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'natPlus', value: natPlusVal })
       dispatch({ type: 'UPDATE_SLOT_FIELD', slot: slotIndex, field: 'natMinus', value: natMinusVal })
       ;(['hp', 'at', 'df', 'sa', 'sd', 'sp'] as const).forEach(stat => {
@@ -235,6 +248,9 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
       const filled = moves.slice(0, 4)
       filled.forEach((move, i) => dispatch({ type: 'UPDATE_MOVE', slot: slotIndex, moveIdx: i, value: move }))
       for (let i = filled.length; i < 4; i++) dispatch({ type: 'UPDATE_MOVE', slot: slotIndex, moveIdx: i, value: '' })
+      if (megaInfo) {
+        dispatch({ type: 'SELECT_MEGA', slot: slotIndex, megaForme: megaInfo.megaName, stone: megaInfo.stone })
+      }
     }).catch(() => {})
   }
 
@@ -333,24 +349,22 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
         })}
       </div>
 
-      {slot.pokemon && (
-        <div className="showdown-btn-group">
-          <button
-            className="import-showdown-btn"
-            onClick={handleImportShowdown}
-            title="Importer depuis Pokémon Showdown"
-          >
-            Import
-          </button>
-          <button
-            className={'export-showdown-btn' + (copied ? ' copied' : '')}
-            onClick={handleExportShowdown}
-            title="Exporter vers Pokémon Showdown"
-          >
-            {copied ? '✓ Copié !' : 'Export'}
-          </button>
-        </div>
-      )}
+      <div className="showdown-btn-group">
+        <button
+          className="import-showdown-btn"
+          onClick={handleImportShowdown}
+          title="Importer depuis Pokémon Showdown"
+        >
+          Import
+        </button>
+        <button
+          className={'export-showdown-btn' + (copied ? ' copied' : '')}
+          onClick={handleExportShowdown}
+          title="Exporter vers Pokémon Showdown"
+        >
+          {copied ? '✓ Copié !' : 'Export'}
+        </button>
+      </div>
     </div>
   )
 }

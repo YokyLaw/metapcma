@@ -6,12 +6,19 @@ import '../styles/teamBuilder.css'
 import { useAppState } from '../context/AppContext'
 import { NATURE_DATA } from '../data/constants'
 import { POKE_DATA } from '../data/pokeData'
+import { MEGA_MAP } from '../data/megaMap'
 import PokemonCard from './TeamPanel/PokemonCard'
 
 export default function TeamBuilderView() {
   const { state, dispatch } = useAppState()
   const { team } = state
   const [teamCopied, setTeamCopied] = useState(false)
+
+  function toShowdownMegaName(megaName: string): string {
+    const rest = megaName.slice(5)
+    const parts = rest.split(' ')
+    return parts[0] + '-Mega' + (parts.length > 1 ? '-' + parts.slice(1).join('-') : '')
+  }
 
   function handleExportTeam() {
     const EV_LABELS: Record<string, string> = { hp:'HP', at:'Atk', df:'Def', sa:'SpA', sd:'SpD', sp:'Spe' }
@@ -29,7 +36,7 @@ export default function TeamBuilderView() {
         const notes = (state.slotNotes[slot.id] || '').trim()
         const notesBlock = notes ? '\n' + notes.split('\n').map(l => `// ${l}`).join('\n') : ''
         return [
-          `${slot.pokemon}${itemLine}`,
+          `${slot.megaForme ? toShowdownMegaName(slot.megaForme) : slot.pokemon}${itemLine}`,
           slot.ability ? `Ability: ${slot.ability}` : '',
           'Level: 50',
           evParts.length ? `EVs: ${evParts.join(' / ')}` : '',
@@ -42,6 +49,32 @@ export default function TeamBuilderView() {
       setTeamCopied(true)
       setTimeout(() => setTeamCopied(false), 2000)
     }).catch(() => {})
+  }
+
+  function handleClearTeam() {
+    const emptyTeam = Array.from({ length: 6 }, (_, i) => ({
+      id: i,
+      pokemon: '',
+      megaForme: '',
+      ability: '',
+      item: '(No Item)',
+      natPlus: '',
+      natMinus: '',
+      sps: { hp:0, at:0, df:0, sa:0, sd:0, sp:0 },
+      boosts: { at:0, df:0, sa:0, sd:0, sp:0 },
+      moves: ['','','',''] as [string,string,string,string],
+      ccMoves: null,
+      ccItems: null,
+      ccAbilities: null,
+      ccAllAbilities: null,
+      ccNature: null,
+      ccSps: null,
+      preMegaAbility: '',
+      preMegaItem: '',
+      useDefaultSet: false,
+      preDefaultSet: null,
+    }))
+    dispatch({ type: 'LOAD_STATE', payload: { team: emptyTeam } })
   }
 
   function handleImportTeam() {
@@ -70,13 +103,24 @@ export default function TeamBuilderView() {
         useDefaultSet: false,
         preDefaultSet: null,
       }))
+      const showdownToMega: Record<string, { baseName: string; megaName: string; stone: string }> = {}
+      for (const [baseName, megas] of Object.entries(MEGA_MAP)) {
+        for (const [megaName, stone] of Object.entries(megas)) {
+          const rest = megaName.slice(5)
+          const parts = rest.split(' ')
+          const key = parts[0] + '-Mega' + (parts.length > 1 ? '-' + parts.slice(1).join('-') : '')
+          showdownToMega[key] = { baseName, megaName, stone }
+        }
+      }
       blocks.slice(0, 6).forEach((block, i) => {
         const lines = block.split('\n').map(l => l.trim()).filter(l => !l.startsWith('//'))
         if (!lines.length) return
         const firstLine = lines[0]
         const atIdx = firstLine.indexOf(' @ ')
-        const pokeName = (atIdx >= 0 ? firstLine.slice(0, atIdx) : firstLine).trim()
-        if (!POKE_DATA[pokeName]) return
+        const pokeName = (atIdx >= 0 ? firstLine.slice(0, atIdx) : firstLine).trim().replace(/ \([MFmf]\)$/, '')
+        const megaInfo = showdownToMega[pokeName]
+        const resolvedName = megaInfo ? megaInfo.baseName : pokeName
+        if (!POKE_DATA[resolvedName]) return
         const item = atIdx >= 0 ? firstLine.slice(atIdx + 3).trim() : '(No Item)'
         let ability = ''
         let natPlus = ''
@@ -102,9 +146,14 @@ export default function TeamBuilderView() {
         const filledMoves = [...moves.slice(0, 4), '', '', '', ''].slice(0, 4) as [string,string,string,string]
         newTeam[i] = {
           ...newTeam[i],
-          pokemon: pokeName,
-          ability: ability || (POKE_DATA[pokeName]?.ab ?? ''),
-          item,
+          pokemon: resolvedName,
+          megaForme: megaInfo ? megaInfo.megaName : '',
+          ability: megaInfo
+            ? (POKE_DATA[megaInfo.megaName]?.ab ?? ability ?? '')
+            : (ability || (POKE_DATA[resolvedName]?.ab ?? '')),
+          item: megaInfo ? megaInfo.stone : item,
+          preMegaAbility: megaInfo ? (ability || (POKE_DATA[resolvedName]?.ab ?? '')) : '',
+          preMegaItem: megaInfo ? '(No Item)' : '',
           natPlus,
           natMinus,
           sps: { hp: sps.hp, at: sps.at, df: sps.df, sa: sps.sa, sd: sps.sd, sp: sps.sp },
@@ -131,6 +180,13 @@ export default function TeamBuilderView() {
           title="Exporter toute la team vers Pokémon Showdown"
         >
           {teamCopied ? '✓ Copié !' : 'Export Team'}
+        </button>
+        <button
+          className="clear-team-btn"
+          onClick={handleClearTeam}
+          title="Vider toute la team"
+        >
+          Clear Team
         </button>
       </div>
       <div className="teambuilder-grid">
