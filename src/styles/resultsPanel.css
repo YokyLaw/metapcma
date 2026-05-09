@@ -345,7 +345,8 @@
 }
 .adv-move-name {
   font-weight: 500;
-  flex: 1;
+  flex-shrink: 1;
+  flex-grow: 0;
   min-width: 90px;
   min-height: 15px;
   overflow: hidden;
@@ -355,7 +356,7 @@
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
   color: inherit;
-  flex-shrink: 0;
+  flex: 1;
 }
 .adv-moves-empty { color: var(--muted); font-size: 12px; }
 .adv-move-immune { color: var(--muted); font-style: italic; }

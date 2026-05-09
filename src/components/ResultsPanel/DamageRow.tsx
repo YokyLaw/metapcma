@@ -136,9 +136,10 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
     : null
 
   const advKey = row.id || row.name
-  const advItemForRow = state.advItems[advKey] || '(No Item)'
-  const advBoostsForRow = state.advBoosts[advKey] as BoostMap | undefined
-  const advMovesForRow = (advMoves[advKey] ?? ['', '', '', '']) as [string, string, string, string]
+  const applyAdvData = simplified || !!useAdvStats
+  const advItemForRow = applyAdvData ? (state.advItems[advKey] || '(No Item)') : '(No Item)'
+  const advBoostsForRow = applyAdvData ? state.advBoosts[advKey] as BoostMap | undefined : undefined
+  const advMovesForRow = (applyAdvData ? (advMoves[advKey] ?? ['', '', '', '']) : ['', '', '', '']) as [string, string, string, string]
   const atkSps = atkSlot?.sps
   const atkNatPlus = atkSlot?.natPlus ?? ''
   const atkNatMinus = atkSlot?.natMinus ?? ''
@@ -389,13 +390,13 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
                     ' ko-low'
                   return (
                     <div key={i} className={'def-move-entry' + dmgClass}>
+                      <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
+                      <span className="def-move-name">{m.name}</span>
                       {m.immune
                         ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
                         : m.calc
                         ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%</span>
-                        : <span className="def-dmg-pct" />}
-                      <span className="def-move-name">{m.name}</span>
-                      <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
+                        : null}
                     </div>
                   )
                 })}

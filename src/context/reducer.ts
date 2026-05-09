@@ -595,8 +595,26 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, matchupCalcList: newList, matchupAdvName: nextId }
     }
 
-    case 'REMOVE_FROM_MATCHUP_CALC':
-      return { ...state, matchupCalcList: state.matchupCalcList.filter(n => n !== action.pokeName) }
+    case 'REMOVE_FROM_MATCHUP_CALC': {
+      const rmId = action.pokeName
+      const { [rmId]: _as, ...nextAdvStats } = state.advStats
+      const { [rmId]: _am, ...nextAdvMoves } = state.advMoves
+      const { [rmId]: _ai, ...nextAdvItems } = state.advItems
+      const { [rmId]: _aa, ...nextAdvAutoSet } = state.advAutoSet
+      const { [rmId]: _ap, ...nextAdvPreAutoSet } = state.advPreAutoSet
+      const { [rmId]: _ab, ...nextAdvBoosts } = state.advBoosts
+      return {
+        ...state,
+        matchupCalcList: state.matchupCalcList.filter(n => n !== rmId),
+        matchupAdvName: state.matchupAdvName === rmId ? null : state.matchupAdvName,
+        advStats: nextAdvStats,
+        advMoves: nextAdvMoves,
+        advItems: nextAdvItems,
+        advAutoSet: nextAdvAutoSet,
+        advPreAutoSet: nextAdvPreAutoSet,
+        advBoosts: nextAdvBoosts,
+      }
+    }
 
     case 'SET_MATCHUP_ROWS':
       return { ...state, matchupRows: action.matchupRows }

@@ -42,7 +42,7 @@ export function useCalc() {
 
       for (const [defName, defData] of Object.entries(POKE_DATA)) {
         if (!defData?.bs) continue
-        const row = buildTableRow(slot, atkStats, defName, defData, advStats, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind)
+        const row = buildTableRow(slot, atkStats, defName, defData, {}, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind)
         if (!row) continue
         row.usage = getUsage(defName)
         tableData.push(row)

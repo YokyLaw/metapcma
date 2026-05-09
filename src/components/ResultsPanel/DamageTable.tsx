@@ -1,5 +1,4 @@
 import { useAppState } from '../../context/AppContext'
-import { extractName } from '../../hooks/useCC'
 import { useTableFilter } from '../../hooks/useTableFilter'
 import type { TableRow, SortKey } from '../../types'
 import DamageRow from './DamageRow'
@@ -12,23 +11,13 @@ interface ExtendedRow extends TableRow {
 
 export default function DamageTable() {
   const { state, dispatch } = useAppState()
-  const { tableData, sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage, advStats } = state
+  const { tableData, sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage } = state
 
-  const enrichedData: ExtendedRow[] = tableData.map(row => {
-    const adv = advStats[row.name] || {}
-    return {
-      ...row,
-      spHP: adv.sp_hp ?? 0,
-      spDf: adv.sp_df ?? 0,
-      spSd: adv.sp_sd ?? 0,
-      spSp: adv.sp_sp ?? 0,
-      spAt: adv.sp_at ?? 0,
-      spSa: adv.sp_sa ?? 0,
-      advNatPlus: adv.natPlus || '',
-      advNatMinus: adv.natMinus || '',
-      advAbility: extractName((adv.ability as unknown) || ''),
-    }
-  })
+  const enrichedData: ExtendedRow[] = tableData.map(row => ({
+    ...row,
+    spHP: 0, spDf: 0, spSd: 0, spSp: 0, spAt: 0, spSa: 0,
+    advNatPlus: '', advNatMinus: '', advAbility: '',
+  }))
 
   const filteredData = useTableFilter(enrichedData as TableRow[], { sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage })
 

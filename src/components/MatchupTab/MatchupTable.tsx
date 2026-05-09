@@ -31,11 +31,13 @@ export default function MatchupTable() {
     }
   })
 
-  const sorted = matchupAdvName
-    ? [...enriched].sort((a, b) =>
-        a.id === matchupAdvName ? -1 : b.id === matchupAdvName ? 1 : 0
-      )
-    : enriched
+  const sorted = [...enriched].sort((a, b) => {
+    if (matchupAdvName) {
+      if (a.id === matchupAdvName) return -1
+      if (b.id === matchupAdvName) return 1
+    }
+    return (b.usage ?? 0) - (a.usage ?? 0)
+  })
 
   if (matchupCalcList.length === 0) {
     return (
