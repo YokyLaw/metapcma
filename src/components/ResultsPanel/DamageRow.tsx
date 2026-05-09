@@ -31,7 +31,7 @@ function fmt(pct: number): string {
   return (Math.floor(pct * 10) / 10).toFixed(1)
 }
 
-export function MoveSlotDiv({ slot, mirrored }: { slot: MoveSlotResult | null; mirrored?: boolean }) {
+export function MoveSlotDiv({ slot, mirrored, recoil }: { slot: MoveSlotResult | null; mirrored?: boolean; recoil?: { recoilMin: number; recoilMax: number } }) {
   if (!slot) return <div className="adv-move-row"><span className="adv-moves-empty">—</span></div>
 
   const { calc } = slot
@@ -42,16 +42,20 @@ export function MoveSlotDiv({ slot, mirrored }: { slot: MoveSlotResult | null; m
     calc.minPct >= 25  ? ' ko' :
     ' ko-low'
 
+  const recoilTxt = recoil && recoil.recoilMax > 0
+    ? ` (${fmt(recoil.recoilMin)}%–${fmt(recoil.recoilMax)}%)`
+    : ''
+
   const pctEl = slot.immune
     ? <span className="adv-move-pct adv-move-immune">(Immune)</span>
-    : calc ? <span className="adv-move-pct">{fmt(calc.minPct)}%–{fmt(calc.maxPct)}%</span>
+    : calc ? <span className="adv-move-pct">{fmt(calc.minPct)}%–{fmt(calc.maxPct)}%{recoilTxt}</span>
     : null
   const dot = <span className="type-dot" style={{ background: `var(--${slot.moveType})` }} />
 
   if (mirrored) {
     const pctMirrored = slot.immune
       ? <span className="adv-move-pct adv-move-immune" style={{ flex: 1 }}>(Immune)</span>
-      : calc ? <span className="adv-move-pct" style={{ flex: 1 }}>{fmt(calc.minPct)}%–{fmt(calc.maxPct)}%</span>
+      : calc ? <span className="adv-move-pct" style={{ flex: 1 }}>{fmt(calc.minPct)}%–{fmt(calc.maxPct)}%{recoilTxt}</span>
       : <span style={{ flex: 1 }} />
     return (
       <div className={'adv-move-row' + pctClass}>
@@ -192,42 +196,215 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
     [ccMoves],
   )
 
+  const quickSetMeta = useMemo(() => {
+    const phys = top8OffMoves.filter(m => getMoveData(m.move.name)?.category === 'Physical').length
+    const spec = top8OffMoves.filter(m => getMoveData(m.move.name)?.category === 'Special').length
+    const offStat: 'at' | 'sa' = phys >= spec ? 'at' : 'sa'
+    const baseDf = advPokeData?.bs.df ?? 0
+    const baseSd = advPokeData?.bs.sd ?? 0
+    const lowerDef: 'df' | 'sd' = baseDf <= baseSd ? 'df' : 'sd'
+    return { offStat, lowerDef }
+  }, [top8OffMoves, advPokeData])
+
+  function applyQuickSet(sps: { hp: number; at: number; df: number; sa: number; sd: number; sp: number }) {
+    const map = { hp: 'sp_hp', at: 'sp_at', df: 'sp_df', sa: 'sp_sa', sd: 'sp_sd', sp: 'sp_sp' } as const
+    ;(Object.keys(map) as (keyof typeof map)[]).forEach(k => {
+      dispatch({ type: 'SET_ADV_STAT', pokeName: advKey, statKey: map[k], value: 0 })
+    })
+    ;(Object.keys(sps) as (keyof typeof sps)[]).forEach(k => {
+      dispatch({ type: 'SET_ADV_STAT', pokeName: advKey, statKey: map[k], value: sps[k] })
+    })
+  }
+
+  function handleOffenseSpeed() {
+    const { offStat } = quickSetMeta
+    applyQuickSet({ hp: 2, at: offStat === 'at' ? 32 : 0, df: 0, sa: offStat === 'sa' ? 32 : 0, sd: 0, sp: 32 })
+  }
+  function handleOffenseBulk() {
+    const { offStat, lowerDef } = quickSetMeta
+    applyQuickSet({
+      hp: 32,
+      at: offStat === 'at' ? 32 : 0,
+      sa: offStat === 'sa' ? 32 : 0,
+      df: lowerDef === 'df' ? 2 : 0,
+      sd: lowerDef === 'sd' ? 2 : 0,
+      sp: 0,
+    })
+  }
+  function handleDefense() {
+    const { lowerDef } = quickSetMeta
+    applyQuickSet({
+      hp: 32,
+      at: 0,
+      sa: 0,
+      df: lowerDef === 'df' ? 32 : 2,
+      sd: lowerDef === 'sd' ? 32 : 2,
+      sp: 0,
+    })
+  }
+  function handleClearSet() {
+    applyQuickSet({ hp: 0, at: 0, df: 0, sa: 0, sd: 0, sp: 0 })
+  }
+
+  const userHP = atkSlot && atkPokeData
+    ? calcStat(atkPokeData.bs.hp, atkSlot.sps.hp, [atkSlot.natPlus, atkSlot.natMinus], 'hp')
+    : 0
+  const advHP = advPokeData
+    ? calcStat(advPokeData.bs.hp, row.spHP ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'hp')
+    : 0
+
+  const buildRecoil = (
+    moveName: string,
+    calc: { minPct: number; maxPct: number } | null,
+    attackerHP: number,
+    defenderHP: number,
+  ) => {
+    if (!calc || attackerHP <= 0 || defenderHP <= 0) return { recoilMin: 0, recoilMax: 0 }
+    const md = getMoveData(moveName)
+    const recoil = md?.recoilHP as [number, number] | undefined
+    if (!recoil || recoil[1] <= 0) return { recoilMin: 0, recoilMax: 0 }
+    const factor = (defenderHP / attackerHP) * (recoil[0] / recoil[1])
+    return { recoilMin: calc.minPct * factor, recoilMax: calc.maxPct * factor }
+  }
+
   const defMoves = useMemo(() => {
-    if (simplified || useAdvStats) {
-      return advMovesForRow
-        .filter(m => m)
-        .map(moveName => {
-          const md = getMoveData(moveName)
-          const moveType = md?.type ?? 'Normal'
-          const calc = revCtx ? calcOneMoveResult(moveName, revCtx) : null
-          return {
-            name: moveName,
-            percent: 0,
-            moveType,
-            immune: revCtx !== null && calc === null && (md?.bp ?? 0) > 0,
-            calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct } : null,
-          }
-        })
-    }
-    return top8OffMoves.map(m => {
-      const md = getMoveData(m.move.name)
+    const buildEntry = (name: string, percent: number) => {
+      const md = getMoveData(name)
       const moveType = md?.type ?? 'Normal'
-      const calc = revCtx ? calcOneMoveResult(m.move.name, revCtx) : null
+      const calc = revCtx ? calcOneMoveResult(name, revCtx) : null
+      const calcShape = calc ? { minPct: calc.minPct, maxPct: calc.maxPct } : null
+      const { recoilMin, recoilMax } = buildRecoil(name, calcShape, advHP, userHP)
       return {
-        name: m.move.name,
-        percent: m.percent,
+        name,
+        percent,
         moveType,
         immune: revCtx !== null && calc === null && (md?.bp ?? 0) > 0,
-        calc: calc ? { minPct: calc.minPct, maxPct: calc.maxPct } : null,
+        calc: calcShape,
+        recoilMin,
+        recoilMax,
       }
-    })
-  }, [simplified, advMovesForRow, top8OffMoves, revCtx])
+    }
+    if (simplified || useAdvStats) {
+      return advMovesForRow.filter(m => m).map(m => buildEntry(m, 0))
+    }
+    return top8OffMoves.map(m => buildEntry(m.move.name, m.percent))
+  }, [simplified, advMovesForRow, top8OffMoves, revCtx, advHP, userHP])
   const slots = row.moveResults as (MoveSlotResult | null)[]
+  const slotsRecoil = useMemo(
+    () => slots.map(s => s ? buildRecoil(s.move, s.calc, userHP, advHP) : { recoilMin: 0, recoilMax: 0 }),
+    [slots, userHP, advHP],
+  )
+
+  const threatClass = useMemo(() => {
+    if (atkSpeed === null || advSpeed === null) return ''
+    if (!atkSlot || !atkPokeData || !advPokeData) return ''
+    if (userHP <= 0 || advHP <= 0) return ''
+
+    type MInfo = { name: string; minPct: number; maxPct: number; isPriority: boolean; isFakeOut: boolean; recoilFactor: number }
+    const buildInfos = (
+      items: { name?: string; move?: string; calc: { minPct: number; maxPct: number } | null; immune?: boolean }[],
+      attackerHP: number,
+      defenderHP: number,
+    ): MInfo[] =>
+      items
+        .filter(m => m.calc && !m.immune)
+        .map(m => {
+          const name = (m.name ?? m.move ?? '') as string
+          const md = getMoveData(name)
+          const recoil = md?.recoilHP as [number, number] | undefined
+          const recoilFactor = recoil && recoil[1] > 0
+            ? (defenderHP / attackerHP) * (recoil[0] / recoil[1])
+            : 0
+          return {
+            name,
+            minPct: m.calc!.minPct,
+            maxPct: m.calc!.maxPct,
+            isPriority: !!md?.isPriority,
+            isFakeOut: name === 'Fake Out',
+            recoilFactor,
+          }
+        })
+
+    const advInfos = buildInfos(defMoves, advHP, userHP)
+    const userInfos = buildInfos(
+      slots.filter((s): s is MoveSlotResult => !!s).map(s => ({ name: s.move, calc: s.calc, immune: s.immune })),
+      userHP,
+      advHP,
+    )
+
+    if (advInfos.length === 0) return ' threat-green'
+
+    type Choice = { dmg: number; isPriority: boolean; isFakeOut: boolean; recoilFactor: number } | null
+    const chooseMove = (infos: MInfo[], remaining: number, foAvailable: boolean): Choice => {
+      if (infos.length === 0) return null
+      if (foAvailable) {
+        const fo = infos.find(m => m.isFakeOut)
+        if (fo) return { dmg: fo.minPct, isPriority: true, isFakeOut: true, recoilFactor: fo.recoilFactor }
+      }
+      const usable = infos.filter(m => !m.isFakeOut)
+      if (usable.length === 0) return null
+      const prioKills = usable.filter(m => m.isPriority && m.minPct >= remaining)
+      if (prioKills.length > 0) {
+        const best = prioKills.reduce((a, b) => (b.minPct > a.minPct ? b : a))
+        return { dmg: best.minPct, isPriority: true, isFakeOut: false, recoilFactor: best.recoilFactor }
+      }
+      const best = usable.reduce((a, b) => (b.maxPct > a.maxPct ? b : a))
+      return { dmg: best.minPct, isPriority: best.isPriority, isFakeOut: false, recoilFactor: best.recoilFactor }
+    }
+
+    const speedAdvFirst = atkSpeed === advSpeed ? true : (trickRoom ? atkSpeed > advSpeed : atkSpeed < advSpeed)
+    let dmgOnUser = 0, dmgOnAdv = 0
+
+    for (let turn = 1; turn <= 6; turn++) {
+      const advChoice = chooseMove(advInfos, 100 - dmgOnUser, turn === 1)
+      const userChoice = chooseMove(userInfos, 100 - dmgOnAdv, turn === 1)
+
+      let advFirst: boolean
+      if (!userChoice) advFirst = true
+      else if (!advChoice) advFirst = false
+      else if (advChoice.isFakeOut && !userChoice.isFakeOut) advFirst = true
+      else if (userChoice.isFakeOut && !advChoice.isFakeOut) advFirst = false
+      else if (advChoice.isPriority && !userChoice.isPriority) advFirst = true
+      else if (userChoice.isPriority && !advChoice.isPriority) advFirst = false
+      else advFirst = speedAdvFirst
+
+      if (advFirst) {
+        if (advChoice) {
+          dmgOnUser += advChoice.dmg
+          dmgOnAdv += advChoice.dmg * advChoice.recoilFactor
+          if (dmgOnUser >= 100) return turn <= 2 ? ' threat-red' : (turn >= 4 ? ' threat-green' : '')
+          if (dmgOnAdv >= 100) return ' threat-green'
+          if (advChoice.isFakeOut) continue
+        }
+        if (userChoice) {
+          dmgOnAdv += userChoice.dmg
+          dmgOnUser += userChoice.dmg * userChoice.recoilFactor
+          if (dmgOnAdv >= 100) return ' threat-green'
+          if (dmgOnUser >= 100) return ' threat-green'
+        }
+      } else {
+        if (userChoice) {
+          dmgOnAdv += userChoice.dmg
+          dmgOnUser += userChoice.dmg * userChoice.recoilFactor
+          if (dmgOnAdv >= 100) return ' threat-green'
+          if (dmgOnUser >= 100) return ' threat-green'
+          if (userChoice.isFakeOut) continue
+        }
+        if (advChoice) {
+          dmgOnUser += advChoice.dmg
+          dmgOnAdv += advChoice.dmg * advChoice.recoilFactor
+          if (dmgOnUser >= 100) return turn <= 2 ? ' threat-red' : (turn >= 4 ? ' threat-green' : '')
+          if (dmgOnAdv >= 100) return ' threat-green'
+        }
+      }
+    }
+    return ' threat-green'
+  }, [defMoves, slots, atkSpeed, advSpeed, trickRoom, atkSlot, atkPokeData, advPokeData, userHP, advHP])
 
   return (
     <>
       <tr
-        className={'mainrow' + (isSelected ? ' adv-row-selected' : '') + (onSelect ? ' adv-row-clickable' : '')}
+        className={'mainrow' + threatClass + (isSelected ? ' adv-row-selected' : '') + (onSelect ? ' adv-row-clickable' : '')}
         onClick={onSelect}
       >
         {simplified ? (
@@ -310,10 +487,10 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
               </div>
             </div>
           )}
-          <MoveSlotDiv slot={slots[0] ?? null} />
-          <MoveSlotDiv slot={slots[1] ?? null} />
-          <MoveSlotDiv slot={slots[2] ?? null} />
-          <MoveSlotDiv slot={slots[3] ?? null} />
+          <MoveSlotDiv slot={slots[0] ?? null} recoil={slotsRecoil[0]} />
+          <MoveSlotDiv slot={slots[1] ?? null} recoil={slotsRecoil[1]} />
+          <MoveSlotDiv slot={slots[2] ?? null} recoil={slotsRecoil[2]} />
+          <MoveSlotDiv slot={slots[3] ?? null} recoil={slotsRecoil[3]} />
         </td>
         <td className="speed-cell">
           {atkSpeed !== null && advSpeed !== null && (
@@ -378,6 +555,12 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
                       ))
                     }
                   </div>
+                  <div className="def-quick-sets" onClick={e => e.stopPropagation()}>
+                    <button className="def-quick-set-btn" onClick={handleOffenseSpeed} title="2 HP / 32 ATK ou SpA / 32 SPE">Off Speed</button>
+                    <button className="def-quick-set-btn" onClick={handleOffenseBulk} title="32 HP / 32 ATK ou SpA / 2 dans la def la plus basse">Off Bulk</button>
+                    <button className="def-quick-set-btn" onClick={handleDefense} title="32 HP / 32 dans la def la plus basse / 2 dans l'autre">Defense</button>
+                    <button className="def-quick-set-btn" onClick={handleClearSet} title="Reset des EVs">Clear</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -399,7 +582,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
                       {m.immune
                         ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
                         : m.calc
-                        ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%</span>
+                        ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%{m.recoilMax > 0 ? ` (${fmt(m.recoilMin)}%–${fmt(m.recoilMax)}%)` : ''}</span>
                         : null}
                     </div>
                   )
@@ -424,7 +607,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
                             {m.immune
                               ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
                               : m.calc
-                              ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%</span>
+                              ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%{m.recoilMax > 0 ? ` (${fmt(m.recoilMin)}%–${fmt(m.recoilMax)}%)` : ''}</span>
                               : null}
                           </div>
                         )

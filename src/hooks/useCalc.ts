@@ -44,7 +44,7 @@ export function useCalc() {
       for (const [defName, defData] of Object.entries(POKE_DATA)) {
         if (!defData?.bs) continue
         const fullDefItem = extractName((advItems[defName] as unknown) || '')
-        const row = buildTableRow(slot, atkStats, defName, defData, {}, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind, fullDefItem)
+        const row = buildTableRow(slot, atkStats, defName, defData, advStats, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind, fullDefItem)
         if (!row) continue
         row.usage = getUsage(defName)
         tableData.push(row)
