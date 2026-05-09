@@ -5,7 +5,8 @@ import { spriteUrl, itemSpriteUrl, getEffectivePokeName, getBaseNameForCC } from
 import { POKE_DATA } from '../../data/pokeData'
 import { getMoveData } from '../../calc/moveHelpers'
 import { calcStat, getStats } from '../../calc/statCalc'
-import { buildCalcCtx, calcOneMoveResult } from '../../calc/damageCalc'
+import { buildCalcCtx, calcOneMoveResult, getWeatherSpeedMult, getEffectiveMoveType } from '../../calc/damageCalc'
+import { calcThreatBucket, type ThreatBucket } from '../../calc/threatCalc'
 import { getAbilityDesc } from '../../hooks/useAbilityDesc'
 import { useAdvCC } from '../../hooks/useAdvCC'
 import { extractName } from '../../hooks/useCC'
@@ -25,6 +26,7 @@ interface Props {
   simplified?: boolean
   useAdvStats?: boolean
   onRemove?: () => void
+  onThreatChange?: (rowName: string, bucket: ThreatBucket) => void
 }
 
 function fmt(pct: number): string {
@@ -75,7 +77,7 @@ export function MoveSlotDiv({ slot, mirrored, recoil }: { slot: MoveSlotResult |
   )
 }
 
-export default function DamageRow({ row, onSelect, isSelected, simplified, useAdvStats, onRemove }: Props) {
+export default function DamageRow({ row, onSelect, isSelected, simplified, useAdvStats, onRemove, onThreatChange }: Props) {
   const baseName  = getBaseNameForCC(row.name)
   const isMegaRow = row.name !== baseName
 
@@ -139,11 +141,13 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
 
   const atkScarf = atkSlot?.item === 'Choice Scarf' ? 1.5 : 1
   const advScarf = advItemForRow === 'Choice Scarf' ? 1.5 : 1
+  const atkWeatherSp = getWeatherSpeedMult(atkSlot?.ability ?? '', weather)
+  const advWeatherSp = getWeatherSpeedMult(currentAbility, weather)
   const atkSpeed = (atkPokeData && atkSlot)
-    ? Math.floor(calcStat(atkPokeData.bs.sp, atkSlot.sps.sp, [atkSlot.natPlus, atkSlot.natMinus], 'sp') * (tailwind ? 2 : 1) * atkScarf)
+    ? Math.floor(calcStat(atkPokeData.bs.sp, atkSlot.sps.sp, [atkSlot.natPlus, atkSlot.natMinus], 'sp') * (tailwind ? 2 : 1) * atkScarf * atkWeatherSp)
     : null
   const advSpeed = advPokeData
-    ? Math.floor(calcStat(advPokeData.bs.sp, row.spSp ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'sp') * (advTailwind ? 2 : 1) * advScarf)
+    ? Math.floor(calcStat(advPokeData.bs.sp, row.spSp ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'sp') * (advTailwind ? 2 : 1) * advScarf * advWeatherSp)
     : null
   const advBoostsForRow = applyAdvData ? state.advBoosts[advKey] as BoostMap | undefined : undefined
   const advMovesForRow = (applyAdvData ? (advMoves[advKey] ?? ['', '', '', '']) : ['', '', '', '']) as [string, string, string, string]
@@ -270,8 +274,9 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
   const defMoves = useMemo(() => {
     const buildEntry = (name: string, percent: number) => {
       const md = getMoveData(name)
-      const moveType = md?.type ?? 'Normal'
+      const baseType = md?.type ?? 'Normal'
       const calc = revCtx ? calcOneMoveResult(name, revCtx) : null
+      const moveType = calc?.moveType ?? getEffectiveMoveType(name, baseType, currentAbility, weather, terrain)
       const calcShape = calc ? { minPct: calc.minPct, maxPct: calc.maxPct } : null
       const { recoilMin, recoilMax } = buildRecoil(name, calcShape, advHP, userHP)
       return {
@@ -288,118 +293,32 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
       return advMovesForRow.filter(m => m).map(m => buildEntry(m, 0))
     }
     return top8OffMoves.map(m => buildEntry(m.move.name, m.percent))
-  }, [simplified, advMovesForRow, top8OffMoves, revCtx, advHP, userHP])
+  }, [simplified, advMovesForRow, top8OffMoves, revCtx, advHP, userHP, currentAbility, weather, terrain])
   const slots = row.moveResults as (MoveSlotResult | null)[]
   const slotsRecoil = useMemo(
     () => slots.map(s => s ? buildRecoil(s.move, s.calc, userHP, advHP) : { recoilMin: 0, recoilMax: 0 }),
     [slots, userHP, advHP],
   )
 
-  const threatClass = useMemo(() => {
-    if (atkSpeed === null || advSpeed === null) return ''
+  const threatBucket: ThreatBucket = useMemo(() => {
     if (!atkSlot || !atkPokeData || !advPokeData) return ''
-    if (userHP <= 0 || advHP <= 0) return ''
-
-    type MInfo = { name: string; minPct: number; maxPct: number; isPriority: boolean; isFakeOut: boolean; recoilFactor: number }
-    const buildInfos = (
-      items: { name?: string; move?: string; calc: { minPct: number; maxPct: number } | null; immune?: boolean }[],
-      attackerHP: number,
-      defenderHP: number,
-    ): MInfo[] =>
-      items
-        .filter(m => m.calc && !m.immune)
-        .map(m => {
-          const name = (m.name ?? m.move ?? '') as string
-          const md = getMoveData(name)
-          const recoil = md?.recoilHP as [number, number] | undefined
-          const recoilFactor = recoil && recoil[1] > 0
-            ? (defenderHP / attackerHP) * (recoil[0] / recoil[1])
-            : 0
-          return {
-            name,
-            minPct: m.calc!.minPct,
-            maxPct: m.calc!.maxPct,
-            isPriority: !!md?.isPriority,
-            isFakeOut: name === 'Fake Out',
-            recoilFactor,
-          }
-        })
-
-    const advInfos = buildInfos(defMoves, advHP, userHP)
-    const userInfos = buildInfos(
-      slots.filter((s): s is MoveSlotResult => !!s).map(s => ({ name: s.move, calc: s.calc, immune: s.immune })),
+    return calcThreatBucket({
+      defMoves: defMoves.map(m => ({ name: m.name, calc: m.calc, immune: m.immune })),
+      userSlots: slots,
+      atkSpeed,
+      advSpeed,
       userHP,
       advHP,
-    )
+      weather,
+      trickRoom,
+    })
+  }, [defMoves, slots, atkSpeed, advSpeed, trickRoom, atkSlot, atkPokeData, advPokeData, userHP, advHP, weather])
 
-    if (advInfos.length === 0) return ' threat-green'
+  const threatClass = threatBucket ? ` threat-${threatBucket}` : ''
 
-    type Choice = { dmg: number; isPriority: boolean; isFakeOut: boolean; recoilFactor: number } | null
-    const chooseMove = (infos: MInfo[], remaining: number, foAvailable: boolean): Choice => {
-      if (infos.length === 0) return null
-      if (foAvailable) {
-        const fo = infos.find(m => m.isFakeOut)
-        if (fo) return { dmg: fo.minPct, isPriority: true, isFakeOut: true, recoilFactor: fo.recoilFactor }
-      }
-      const usable = infos.filter(m => !m.isFakeOut)
-      if (usable.length === 0) return null
-      const prioKills = usable.filter(m => m.isPriority && m.minPct >= remaining)
-      if (prioKills.length > 0) {
-        const best = prioKills.reduce((a, b) => (b.minPct > a.minPct ? b : a))
-        return { dmg: best.minPct, isPriority: true, isFakeOut: false, recoilFactor: best.recoilFactor }
-      }
-      const best = usable.reduce((a, b) => (b.maxPct > a.maxPct ? b : a))
-      return { dmg: best.minPct, isPriority: best.isPriority, isFakeOut: false, recoilFactor: best.recoilFactor }
-    }
-
-    const speedAdvFirst = atkSpeed === advSpeed ? true : (trickRoom ? atkSpeed > advSpeed : atkSpeed < advSpeed)
-    let dmgOnUser = 0, dmgOnAdv = 0
-
-    for (let turn = 1; turn <= 6; turn++) {
-      const advChoice = chooseMove(advInfos, 100 - dmgOnUser, turn === 1)
-      const userChoice = chooseMove(userInfos, 100 - dmgOnAdv, turn === 1)
-
-      let advFirst: boolean
-      if (!userChoice) advFirst = true
-      else if (!advChoice) advFirst = false
-      else if (advChoice.isFakeOut && !userChoice.isFakeOut) advFirst = true
-      else if (userChoice.isFakeOut && !advChoice.isFakeOut) advFirst = false
-      else if (advChoice.isPriority && !userChoice.isPriority) advFirst = true
-      else if (userChoice.isPriority && !advChoice.isPriority) advFirst = false
-      else advFirst = speedAdvFirst
-
-      if (advFirst) {
-        if (advChoice) {
-          dmgOnUser += advChoice.dmg
-          dmgOnAdv += advChoice.dmg * advChoice.recoilFactor
-          if (dmgOnUser >= 100) return turn <= 2 ? ' threat-red' : (turn >= 4 ? ' threat-green' : '')
-          if (dmgOnAdv >= 100) return ' threat-green'
-          if (advChoice.isFakeOut) continue
-        }
-        if (userChoice) {
-          dmgOnAdv += userChoice.dmg
-          dmgOnUser += userChoice.dmg * userChoice.recoilFactor
-          if (dmgOnAdv >= 100) return ' threat-green'
-          if (dmgOnUser >= 100) return ' threat-green'
-        }
-      } else {
-        if (userChoice) {
-          dmgOnAdv += userChoice.dmg
-          dmgOnUser += userChoice.dmg * userChoice.recoilFactor
-          if (dmgOnAdv >= 100) return ' threat-green'
-          if (dmgOnUser >= 100) return ' threat-green'
-          if (userChoice.isFakeOut) continue
-        }
-        if (advChoice) {
-          dmgOnUser += advChoice.dmg
-          dmgOnAdv += advChoice.dmg * advChoice.recoilFactor
-          if (dmgOnUser >= 100) return turn <= 2 ? ' threat-red' : (turn >= 4 ? ' threat-green' : '')
-          if (dmgOnAdv >= 100) return ' threat-green'
-        }
-      }
-    }
-    return ' threat-green'
-  }, [defMoves, slots, atkSpeed, advSpeed, trickRoom, atkSlot, atkPokeData, advPokeData, userHP, advHP])
+  useEffect(() => {
+    if (onThreatChange) onThreatChange(row.name, threatBucket)
+  }, [onThreatChange, row.name, threatBucket])
 
   return (
     <>

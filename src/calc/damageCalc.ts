@@ -28,6 +28,34 @@ export function getWeatherMod(moveType: string, weather: string, item: string): 
   return 1.0
 }
 
+export function getEffectiveMoveType(moveName: string, baseType: string, ability: string, weather: string, terrain: string): string {
+  if (moveName === 'Weather Ball') {
+    if (weather === 'Sun')  return 'Fire'
+    if (weather === 'Rain') return 'Water'
+    if (weather === 'Sand') return 'Rock'
+    if (weather === 'Snow') return 'Ice'
+    return baseType
+  }
+  if (moveName === 'Terrain Pulse') {
+    if (terrain === 'Electric') return 'Electric'
+    if (terrain === 'Grassy')   return 'Grass'
+    if (terrain === 'Misty')    return 'Fairy'
+    if (terrain === 'Psychic')  return 'Psychic'
+    return baseType
+  }
+  const ateTypes: Record<string, string> = { 'Galvanize':'Electric', 'Aerilate':'Flying', 'Pixilate':'Fairy', 'Refrigerate':'Ice' }
+  if (ateTypes[ability] && baseType === 'Normal') return ateTypes[ability]
+  return baseType
+}
+
+export function getWeatherSpeedMult(ability: string, weather: string): number {
+  if (ability === 'Chlorophyll' && weather === 'Sun')  return 2
+  if (ability === 'Swift Swim'  && weather === 'Rain') return 2
+  if (ability === 'Sand Rush'   && weather === 'Sand') return 2
+  if (ability === 'Slush Rush'  && weather === 'Snow') return 2
+  return 1
+}
+
 export function getTerrainMod(moveType: string, terrain: string, isGroundedPoke: boolean): number {
   if (!isGroundedPoke) return 1.0
   const TERRAIN_BOOST = 1.3
@@ -172,20 +200,10 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
     const ratio = defW > 0 ? atkW / defW : 5
     bp = ratio >= 5 ? 120 : ratio >= 4 ? 100 : ratio >= 3 ? 80 : ratio >= 2 ? 60 : 40
   } else if (moveName === 'Gyro Ball') {
-    const weatherSpeedMult =
-      (atkAbility === 'Chlorophyll' && weather === 'Sun')  ||
-      (atkAbility === 'Swift Swim'  && weather === 'Rain') ||
-      (atkAbility === 'Sand Rush'   && weather === 'Sand') ||
-      (atkAbility === 'Slush Rush'  && weather === 'Snow') ? 2 : 1
-    const atkSp = (atkPokeData.bs.sp || 1) * (tailwind ? 2 : 1) * weatherSpeedMult
+    const atkSp = (atkPokeData.bs.sp || 1) * (tailwind ? 2 : 1) * getWeatherSpeedMult(atkAbility, weather)
     bp = Math.min(150, Math.max(1, Math.floor(25 * (defenderData.bs.sp || 1) / atkSp)))
   } else if (moveName === 'Electro Ball') {
-    const weatherSpeedMult =
-      (atkAbility === 'Chlorophyll' && weather === 'Sun')  ||
-      (atkAbility === 'Swift Swim'  && weather === 'Rain') ||
-      (atkAbility === 'Sand Rush'   && weather === 'Sand') ||
-      (atkAbility === 'Slush Rush'  && weather === 'Snow') ? 2 : 1
-    const atkSp = (atkPokeData.bs.sp || 1) * (tailwind ? 2 : 1) * weatherSpeedMult
+    const atkSp = (atkPokeData.bs.sp || 1) * (tailwind ? 2 : 1) * getWeatherSpeedMult(atkAbility, weather)
     const spRatio = Math.floor(atkSp / (defenderData.bs.sp || 1))
     bp = spRatio >= 4 ? 150 : spRatio >= 3 ? 120 : spRatio >= 2 ? 80 : spRatio >= 1 ? 60 : 40
   } else if (moveName === 'Acrobatics') {

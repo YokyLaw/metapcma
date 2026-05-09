@@ -46,7 +46,9 @@
       "Bash(rtk gain *)",
       "Bash(Get-ChildItem -Force)",
       "Bash(rtk read *)",
-      "Bash(Select-String -Pattern \"speed|Speed|spd\" -Context 3)"
+      "Bash(Select-String -Pattern \"speed|Speed|spd\" -Context 3)",
+      "Bash(rtk lint *)",
+      "Bash(rtk proxy *)"
     ]
   }
 }

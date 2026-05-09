@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { TableRow, SortKey } from '../types'
+import type { ThreatBucket } from '../calc/threatCalc'
 import { USAGE_THRESHOLD } from './useUsageData'
 
 interface FilterState {
@@ -9,11 +10,14 @@ interface FilterState {
   filterType: string
   filterKO: '' | 'ohko' | 'ko'
   showLowUsage: boolean
+  threatMap?: Record<string, ThreatBucket>
 }
+
+const THREAT_RANK: Record<ThreatBucket, number> = { green: 0, '': 1, red: 2 }
 
 export function useTableFilter(tableData: TableRow[], filters: FilterState): TableRow[] {
   return useMemo(() => {
-    const { sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage } = filters
+    const { sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage, threatMap } = filters
 
     const filtered = tableData.filter(r => {
       if (!showLowUsage) {
@@ -27,8 +31,14 @@ export function useTableFilter(tableData: TableRow[], filters: FilterState): Tab
     })
 
     return [...filtered].sort((a, b) => {
-      if (sortKey === 'usage') {
+      if (sortKey === 'matchup') {
+        const ra = THREAT_RANK[(threatMap?.[a.name] ?? '') as ThreatBucket]
+        const rb = THREAT_RANK[(threatMap?.[b.name] ?? '') as ThreatBucket]
+        if (ra !== rb) return sortAsc ? ra - rb : rb - ra
         return b.usage - a.usage
+      }
+      if (sortKey === 'usage') {
+        return sortAsc ? a.usage - b.usage : b.usage - a.usage
       }
       const av = (a as unknown as Record<string, unknown>)[sortKey]
       const bv = (b as unknown as Record<string, unknown>)[sortKey]
@@ -40,5 +50,5 @@ export function useTableFilter(tableData: TableRow[], filters: FilterState): Tab
       }
       return 0
     })
-  }, [tableData, filters.sortKey, filters.sortAsc, filters.filterSearch, filters.filterType, filters.filterKO, filters.showLowUsage])
+  }, [tableData, filters.sortKey, filters.sortAsc, filters.filterSearch, filters.filterType, filters.filterKO, filters.showLowUsage, filters.threatMap])
 }

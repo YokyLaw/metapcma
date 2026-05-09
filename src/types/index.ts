@@ -112,4 +112,4 @@ export interface TableRow {
 export type Weather = "" | "Sun" | "Rain" | "Sand" | "Snow";
 export type Terrain = "" | "Electric" | "Grassy" | "Psychic" | "Misty";
 export type Tailwind = boolean;
-export type SortKey = "usage" | "name" | "type" | "move" | "minPct" | "maxPct";
+export type SortKey = "usage" | "name" | "type" | "move" | "minPct" | "maxPct" | "matchup";

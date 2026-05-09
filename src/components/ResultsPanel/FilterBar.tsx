@@ -1,15 +1,33 @@
 import { useAppState } from '../../context/AppContext'
-import { TYPE_NAMES } from '../../data/constants'
+import type { SortKey } from '../../types'
+
+type SortMode = 'usageDesc' | 'usageAsc' | 'matchupTopDown' | 'matchupDownTop'
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'usageDesc',      label: 'Usage Top Down' },
+  { value: 'usageAsc',       label: 'Usage Down Top' },
+  { value: 'matchupTopDown', label: 'Matchup Top Down' },
+  { value: 'matchupDownTop', label: 'Matchup Down Top' },
+]
+
+function modeToSort(mode: SortMode): { key: SortKey; asc: boolean } {
+  switch (mode) {
+    case 'usageDesc':      return { key: 'usage',   asc: false }
+    case 'usageAsc':       return { key: 'usage',   asc: true }
+    case 'matchupTopDown': return { key: 'matchup', asc: true }
+    case 'matchupDownTop': return { key: 'matchup', asc: false }
+  }
+}
+
+function sortToMode(key: SortKey, asc: boolean): SortMode {
+  if (key === 'matchup') return asc ? 'matchupTopDown' : 'matchupDownTop'
+  if (key === 'usage')   return asc ? 'usageAsc' : 'usageDesc'
+  return 'usageDesc'
+}
 
 export default function FilterBar() {
   const { state, dispatch } = useAppState()
-
-  function setSortMode(mode: 'usage' | 'damage') {
-    dispatch({ type: 'SET_SORT', key: mode === 'damage' ? 'maxPct' : 'usage', asc: false })
-  }
-
-  const sortByUsage = state.sortKey === 'usage'
-  const sortByDamage = state.sortKey === 'maxPct'
+  const currentMode = sortToMode(state.sortKey, state.sortAsc)
 
   return (
     <div className="filter-bar">
@@ -21,25 +39,6 @@ export default function FilterBar() {
         onChange={e => dispatch({ type: 'SET_FILTER_SEARCH', value: e.target.value })}
       />
 
-      <select
-        style={{ width: 130 }}
-        value={state.filterType}
-        onChange={e => dispatch({ type: 'SET_FILTER_TYPE', value: e.target.value })}
-      >
-        <option value="">Tous types</option>
-        {TYPE_NAMES.map(t => <option key={t} value={t}>{t}</option>)}
-      </select>
-
-      <select
-        style={{ width: 120 }}
-        value={state.filterKO}
-        onChange={e => dispatch({ type: 'SET_FILTER_KO', value: e.target.value as '' | 'ohko' | 'ko' })}
-      >
-        <option value="">Tous résultats</option>
-        <option value="ohko">OHKO seulement</option>
-        <option value="ko">KO potentiel</option>
-      </select>
-
       <label style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--muted)', fontFamily:"'IBM Plex Mono',monospace", cursor:'pointer', whiteSpace:'nowrap' }}>
         <input
           type="checkbox"
@@ -50,20 +49,16 @@ export default function FilterBar() {
         Afficher &lt;0.8%
       </label>
 
-      <div style={{ display:'flex', gap:4, marginLeft:'auto' }}>
-        <button
-          className={'field-btn' + (sortByUsage ? ' active' : '')}
-          onClick={() => setSortMode('usage')}
-        >
-          PAR USAGE
-        </button>
-        <button
-          className={'field-btn' + (sortByDamage ? ' active' : '')}
-          onClick={() => setSortMode('damage')}
-        >
-          PAR DÉGÂTS
-        </button>
-      </div>
+      <select
+        style={{ width: 180, marginLeft: 'auto' }}
+        value={currentMode}
+        onChange={e => {
+          const { key, asc } = modeToSort(e.target.value as SortMode)
+          dispatch({ type: 'SET_SORT', key, asc })
+        }}
+      >
+        {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
     </div>
   )
 }

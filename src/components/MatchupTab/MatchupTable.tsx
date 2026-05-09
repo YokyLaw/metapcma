@@ -54,9 +54,9 @@ export default function MatchupTable() {
       <table className="damage-table matchup-damage-table">
       <thead>
         <tr>
-          <th>OFFENSE</th>
+          <th>PLAYER</th>
           <th className="speed-cell">SPEEDTIER</th>
-          <th>DEFENSE</th>
+          <th>OPPONENT</th>
         </tr>
       </thead>
       <tbody>
