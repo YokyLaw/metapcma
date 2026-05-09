@@ -5,11 +5,12 @@ import { getUsage, useUsageLoaded } from './useUsageData'
 import { getStats } from '../calc/statCalc'
 import { getEffectivePokeName, getPokeNameFromId } from '../calc/teamHelpers'
 import { buildTableRow } from '../calc/damageCalc'
+import { extractName } from './useCC'
 import type { TableRow } from '../types'
 
 export function useCalc() {
   const { state, dispatch } = useAppState()
-  const { team, selectedSlot, weather, terrain, advStats, gravity, battleFormat, tailwind, helpingHand, auroraVeil, reflect, lightScreen, advAuroraVeil, advReflect, advLightScreen, matchupCalcList } = state
+  const { team, selectedSlot, weather, terrain, advStats, advItems, gravity, battleFormat, tailwind, helpingHand, auroraVeil, reflect, lightScreen, advAuroraVeil, advReflect, advLightScreen, matchupCalcList } = state
   const usageLoaded = useUsageLoaded()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -42,7 +43,8 @@ export function useCalc() {
 
       for (const [defName, defData] of Object.entries(POKE_DATA)) {
         if (!defData?.bs) continue
-        const row = buildTableRow(slot, atkStats, defName, defData, {}, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind)
+        const fullDefItem = extractName((advItems[defName] as unknown) || '')
+        const row = buildTableRow(slot, atkStats, defName, defData, {}, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind, fullDefItem)
         if (!row) continue
         row.usage = getUsage(defName)
         tableData.push(row)
@@ -56,7 +58,8 @@ export function useCalc() {
         if (!defData?.bs) return []
         const idAdv = advStats[id]
         const idAdvStats = idAdv ? { [pokeName]: idAdv } : {}
-        const row = buildTableRow(slot, atkStats, pokeName, defData, idAdvStats, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind)
+        const defItem = extractName((advItems[id] as unknown) || '')
+        const row = buildTableRow(slot, atkStats, pokeName, defData, idAdvStats, weather, terrain, gravity, battleFormat === 'doubles', undefined, helpingHand, advAuroraVeil, advReflect, advLightScreen, tailwind, defItem)
         if (!row) return []
         row.id = id
         row.usage = getUsage(pokeName)
@@ -92,6 +95,7 @@ export function useCalc() {
     advReflect,
     advLightScreen,
     advStats,
+    advItems,
     matchupCalcList,
     usageLoaded,
   ])

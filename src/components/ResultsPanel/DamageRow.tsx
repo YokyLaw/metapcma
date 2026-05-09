@@ -144,6 +144,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
   const atkNatPlus = atkSlot?.natPlus ?? ''
   const atkNatMinus = atkSlot?.natMinus ?? ''
   const atkAbility = atkSlot?.ability ?? ''
+  const atkItem = atkSlot?.item ?? ''
   const atkPokemon = atkSlot?.pokemon
   const atkMega = atkSlot?.megaForme
 
@@ -172,11 +173,11 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
       natPlus: atkSlot.natPlus, natMinus: atkSlot.natMinus,
       ability: atkSlot.ability || '',
     }
-    return buildCalcCtx(advFakeSlot, advAtkStats, atkDefPokeData, atkAsDefOverride, weather, terrain, gravity, battleFormat === 'doubles', advHelpingHand, auroraVeil, reflect, lightScreen)
+    return buildCalcCtx(advFakeSlot, advAtkStats, atkDefPokeData, atkAsDefOverride, weather, terrain, gravity, battleFormat === 'doubles', advHelpingHand, auroraVeil, reflect, lightScreen, false, atkSlot.item || '')
   }, [
     advPokeData, row.name, row.spAt, row.spSa, row.advNatPlus, row.advNatMinus,
     currentAbility, advItemForRow,
-    atkPokemon, atkMega, atkAbility, atkNatPlus, atkNatMinus,
+    atkPokemon, atkMega, atkAbility, atkItem, atkNatPlus, atkNatMinus,
     atkSps?.hp, atkSps?.at, atkSps?.df, atkSps?.sa, atkSps?.sd, atkSps?.sp,
     weather, terrain, gravity, battleFormat, simplified, useAdvStats, auroraVeil, reflect, lightScreen,
     advBoostsForRow?.at, advBoostsForRow?.df, advBoostsForRow?.sa, advBoostsForRow?.sd, advBoostsForRow?.sp,
