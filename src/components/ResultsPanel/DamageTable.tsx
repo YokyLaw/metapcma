@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { useTableFilter } from '../../hooks/useTableFilter'
 import type { TableRow } from '../../types'
@@ -21,13 +21,17 @@ export default function DamageTable() {
     setThreatMap(prev => (prev[rowName] === bucket ? prev : { ...prev, [rowName]: bucket }))
   }, [])
 
-  const enrichedData: ExtendedRow[] = tableData.map(row => ({
+  const enrichedData: ExtendedRow[] = useMemo(() => tableData.map(row => ({
     ...row,
     spHP: 0, spDf: 0, spSd: 0, spSp: 0, spAt: 0, spSa: 0,
     advNatPlus: '', advNatMinus: '', advAbility: '',
-  }))
+  })), [tableData])
 
-  const filteredData = useTableFilter(enrichedData as TableRow[], { sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage, threatMap })
+  const filterArgs = useMemo(
+    () => ({ sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage, threatMap }),
+    [sortKey, sortAsc, filterSearch, filterType, filterKO, showLowUsage, threatMap],
+  )
+  const filteredData = useTableFilter(enrichedData as TableRow[], filterArgs)
 
   if (tableData.length === 0) {
     return <div className="loading">Sélectionnez au moins une attaque pour calculer les dégâts.</div>

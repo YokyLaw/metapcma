@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { useAppState } from '../../context/AppContext'
 import { NATURE_STAT_LABELS } from '../../data/constants'
 import { spriteUrl, itemSpriteUrl, getEffectivePokeName, getBaseNameForCC } from '../../calc/teamHelpers'
@@ -33,7 +33,7 @@ function fmt(pct: number): string {
   return (Math.floor(pct * 10) / 10).toFixed(1)
 }
 
-export function MoveSlotDiv({ slot, mirrored, recoil }: { slot: MoveSlotResult | null; mirrored?: boolean; recoil?: { recoilMin: number; recoilMax: number } }) {
+function MoveSlotDivBase({ slot, mirrored, recoil }: { slot: MoveSlotResult | null; mirrored?: boolean; recoil?: { recoilMin: number; recoilMax: number } }) {
   if (!slot) return <div className="adv-move-row"><span className="adv-moves-empty">—</span></div>
 
   const { calc } = slot
@@ -77,9 +77,42 @@ export function MoveSlotDiv({ slot, mirrored, recoil }: { slot: MoveSlotResult |
   )
 }
 
+export const MoveSlotDiv = memo(MoveSlotDivBase)
+
+interface DefMove {
+  name: string
+  moveType: string
+  immune: boolean
+  calc: { minPct: number; maxPct: number } | null
+  recoilMin: number
+  recoilMax: number
+}
+
+function DefMoveEntry({ m }: { m: DefMove }) {
+  const dmgClass = !m.calc ? '' :
+    m.calc.minPct >= 100 ? ' ohko' :
+    m.calc.maxPct >= 100 ? ' ko-poss' :
+    m.calc.minPct >= 50  ? ' ko-mid' :
+    m.calc.minPct >= 25  ? ' ko' :
+    ' ko-low'
+  return (
+    <div className={'def-move-entry' + dmgClass}>
+      <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
+      <span className="def-move-name">{m.name}</span>
+      {m.immune
+        ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
+        : m.calc
+        ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%{m.recoilMax > 0 ? ` (${fmt(m.recoilMin)}%–${fmt(m.recoilMax)}%)` : ''}</span>
+        : null}
+    </div>
+  )
+}
+
 export default function DamageRow({ row, onSelect, isSelected, simplified, useAdvStats, onRemove, onThreatChange }: Props) {
-  const baseName  = getBaseNameForCC(row.name)
-  const isMegaRow = row.name !== baseName
+  const isMegaRow = useMemo(
+    () => row.name !== getBaseNameForCC(row.name),
+    [row.name],
+  )
 
   const { state, dispatch } = useAppState()
   const { ccAbilities, ccMoves, allAbilities } = useAdvCC(row.name)
@@ -125,10 +158,10 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
     || ''
 
   const usage = row.usage > 0 ? row.usage : undefined
-  const spMap: Record<string, number> = {
+  const spMap: Record<string, number> = useMemo(() => ({
     hp: row.spHP ?? 0, df: row.spDf ?? 0, sd: row.spSd ?? 0,
     sp: row.spSp ?? 0, at: row.spAt ?? 0, sa: row.spSa ?? 0,
-  }
+  }), [row.spHP, row.spDf, row.spSd, row.spSp, row.spAt, row.spSa])
   const { trickRoom, tailwind, advTailwind, weather, terrain, gravity, battleFormat, auroraVeil, reflect, lightScreen, advHelpingHand, advMoves } = state
 
   // Speed comparison
@@ -250,12 +283,16 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
     applyQuickSet({ hp: 0, at: 0, df: 0, sa: 0, sd: 0, sp: 0 })
   }
 
-  const userHP = atkSlot && atkPokeData
+  const userHP = useMemo(() => atkSlot && atkPokeData
     ? calcStat(atkPokeData.bs.hp, atkSlot.sps.hp, [atkSlot.natPlus, atkSlot.natMinus], 'hp')
-    : 0
-  const advHP = advPokeData
+    : 0,
+    [atkPokeData, atkSlot?.sps.hp, atkSlot?.natPlus, atkSlot?.natMinus],
+  )
+  const advHP = useMemo(() => advPokeData
     ? calcStat(advPokeData.bs.hp, row.spHP ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'hp')
-    : 0
+    : 0,
+    [advPokeData, row.spHP, row.advNatPlus, row.advNatMinus],
+  )
 
   const buildRecoil = (
     moveName: string,
@@ -487,50 +524,14 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
           {defMoves.length > 0 ? (
             (simplified || useAdvStats) ? (
               <div className="def-moves-col">
-                {defMoves.map((m, i) => {
-                  const dmgClass = !m.calc ? '' :
-                    m.calc.minPct >= 100 ? ' ohko' :
-                    m.calc.maxPct >= 100 ? ' ko-poss' :
-                    m.calc.minPct >= 50  ? ' ko-mid' :
-                    m.calc.minPct >= 25  ? ' ko' :
-                    ' ko-low'
-                  return (
-                    <div key={i} className={'def-move-entry' + dmgClass}>
-                      <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
-                      <span className="def-move-name">{m.name}</span>
-                      {m.immune
-                        ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
-                        : m.calc
-                        ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%{m.recoilMax > 0 ? ` (${fmt(m.recoilMin)}%–${fmt(m.recoilMax)}%)` : ''}</span>
-                        : null}
-                    </div>
-                  )
-                })}
+                {defMoves.map((m, i) => <DefMoveEntry key={i} m={m} />)}
               </div>
             ) : (
               <div className="def-moves-grid">
                 {[defMoves.slice(0, 4), defMoves.slice(4)].map((col, ci) =>
                   col.length > 0 && (
                     <div key={ci} className="def-moves-col">
-                      {col.map((m, i) => {
-                        const dmgClass = !m.calc ? '' :
-                          m.calc.minPct >= 100 ? ' ohko' :
-                          m.calc.maxPct >= 100 ? ' ko-poss' :
-                          m.calc.minPct >= 50  ? ' ko-mid' :
-                          m.calc.minPct >= 25  ? ' ko' :
-                          ' ko-low'
-                        return (
-                          <div key={i} className={'def-move-entry' + dmgClass}>
-                            <span className="type-dot" style={{ background: `var(--${m.moveType})` }} />
-                            <span className="def-move-name">{m.name}</span>
-                            {m.immune
-                              ? <span className="def-dmg-pct adv-move-immune">Imm.</span>
-                              : m.calc
-                              ? <span className="def-dmg-pct">{fmt(m.calc.minPct)}%–{fmt(m.calc.maxPct)}%{m.recoilMax > 0 ? ` (${fmt(m.recoilMin)}%–${fmt(m.recoilMax)}%)` : ''}</span>
-                              : null}
-                          </div>
-                        )
-                      })}
+                      {col.map((m, i) => <DefMoveEntry key={i} m={m} />)}
                     </div>
                   )
                 )}

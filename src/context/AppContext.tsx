@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useReducer, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { appReducer, initialState, type AppState, type Action } from './reducer'
 
 const STORAGE_KEY = 'metapcma_state'
@@ -42,8 +42,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch { /* corrupt */ }
   }, [])
 
+  const value = useMemo(() => ({ state, dispatch }), [state])
+
   return (
-    <AppContext.Provider value={{ state, dispatch }}>
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   )
