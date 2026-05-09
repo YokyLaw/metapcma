@@ -128,16 +128,19 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
   // Speed comparison
   const atkSlot = state.selectedSlot !== null ? state.team[state.selectedSlot] : null
   const atkPokeData = atkSlot ? POKE_DATA[getEffectivePokeName(atkSlot)] : null
-  const atkSpeed = (atkPokeData && atkSlot)
-    ? calcStat(atkPokeData.bs.sp, atkSlot.sps.sp, [atkSlot.natPlus, atkSlot.natMinus], 'sp') * (tailwind ? 2 : 1)
-    : null
-  const advSpeed = advPokeData
-    ? calcStat(advPokeData.bs.sp, row.spSp ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'sp') * (advTailwind ? 2 : 1)
-    : null
 
   const advKey = row.id || row.name
   const applyAdvData = simplified || !!useAdvStats
   const advItemForRow = applyAdvData ? (state.advItems[advKey] || '(No Item)') : '(No Item)'
+
+  const atkScarf = atkSlot?.item === 'Choice Scarf' ? 1.5 : 1
+  const advScarf = advItemForRow === 'Choice Scarf' ? 1.5 : 1
+  const atkSpeed = (atkPokeData && atkSlot)
+    ? Math.floor(calcStat(atkPokeData.bs.sp, atkSlot.sps.sp, [atkSlot.natPlus, atkSlot.natMinus], 'sp') * (tailwind ? 2 : 1) * atkScarf)
+    : null
+  const advSpeed = advPokeData
+    ? Math.floor(calcStat(advPokeData.bs.sp, row.spSp ?? 0, [row.advNatPlus ?? '', row.advNatMinus ?? ''], 'sp') * (advTailwind ? 2 : 1) * advScarf)
+    : null
   const advBoostsForRow = applyAdvData ? state.advBoosts[advKey] as BoostMap | undefined : undefined
   const advMovesForRow = (applyAdvData ? (advMoves[advKey] ?? ['', '', '', '']) : ['', '', '', '']) as [string, string, string, string]
   const atkSps = atkSlot?.sps

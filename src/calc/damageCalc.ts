@@ -223,6 +223,8 @@ export function calcOneMoveResult(moveName: string, ctx: CalcCtx): CalcResult | 
   if (atkAbility === 'Mega Launcher' && md.isPulse)              techBP *= 1.5
   if (atkAbility === 'Steely Spirit' && moveType === 'Steel')    techBP *= 1.5
   if (atkAbility === 'Sharpness'     && md.isSlice)              techBP *= 1.5
+  if (atkAbility === 'Fairy Aura'    && moveType === 'Fairy')    techBP *= defAbility === 'Aura Break' ? 0.75 : 4/3
+  if (atkAbility === 'Dark Aura'     && moveType === 'Dark')     techBP *= defAbility === 'Aura Break' ? 0.75 : 4/3
   bp = Math.floor(techBP)
 
   const bpItemMod = getItemBPMod(atkItem, moveType)
