@@ -4,7 +4,7 @@ import { useAppState } from '../context/AppContext'
 import { POKE_DATA } from '../data/pokeData'
 import SearchSelect from './TeamPanel/SearchSelect'
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { getUsage } from '../hooks/useUsageData'
+import { getUsage, useUsageLoaded } from '../hooks/useUsageData'
 import '../styles/teamBuilder.css'
 
 import { MEGA_MAP } from '../data/megaMap'
@@ -16,6 +16,7 @@ import { useFetchCCForSlot, extractName } from '../hooks/useCC'
 import { getAbilityDesc } from '../hooks/useAbilityDesc'
 import { getItemList, getItemDesc } from '../hooks/useItemDesc'
 import { useSpeedTiers } from '../hooks/useSpeedTiers'
+import { useDescTooltip } from '../hooks/useDescTooltip'
 
 type ConfigTab = 'moves' | 'evs-def' | 'evs-off' | 'evs-spe'
 
@@ -34,6 +35,12 @@ function fmtStage(stage: number): string {
   return stage > 0 ? `+${stage}` : `${stage}`
 }
 
+function formatTierBonus(bonus: string): string {
+  return bonus
+    .replace(/(\d+ EV[+-]?) (?!avec )(\S)/, '$1 | $2')
+    .replace(' avec ', ' | ')
+}
+
 const NAT_PLUS_OPTIONS = NATURE_STATS.map(s => ({
   value: s, label: `+${NATURE_STAT_LABELS[s]}`,
 }))
@@ -49,8 +56,11 @@ export default function NewTeamBuilder() {
   const activeSlotIdx = selectedSlot ?? 0
   const activeSlot = team[activeSlotIdx]
   const [activeTab, setActiveTab] = useState<ConfigTab>('moves')
+  const [viewingMegaForm, setViewingMegaForm] = useState(false)
   const fetchCC = useFetchCCForSlot()
   const { data: speedTiers, loading: loadingSpeedTiers } = useSpeedTiers()
+  const { tooltip: filterTooltip, tooltipRef: filterTooltipRef, handleEnter: handleFilterEnter, handleLeave: handleFilterLeave } = useDescTooltip()
+  const usageLoaded = useUsageLoaded()
 
   const translateAbility = (name: string) => ABILITY_TRANSLATIONS[name] || name
   const translateItem = (name: string) => ITEM_TRANSLATIONS[name] || name
@@ -67,14 +77,18 @@ export default function NewTeamBuilder() {
     return Object.keys(POKE_DATA)
       .filter(n => !n.startsWith('Mega ') && n !== 'Aegislash-Shield' && n !== 'Aegislash-Blade')
       .sort((a, b) => (getUsage(b) - getUsage(a)) || a.localeCompare(b))
-      .map(n => ({
-        value: n,
-        label: n,
-        image: spriteUrl(n),
-        types: [POKE_DATA[n].t1, ...(POKE_DATA[n].t2 ? [POKE_DATA[n].t2] : [])],
-        disabled: usedPokemonNames.has(n)
-      }))
-  }, [usedPokemonNames])
+      .map(n => {
+        const u = getUsage(n)
+        return {
+          value: n,
+          label: n,
+          meta: u > 0 ? `${Math.floor(u * 10) / 10}%` : undefined,
+          image: spriteUrl(n),
+          types: [POKE_DATA[n].t1, ...(POKE_DATA[n].t2 ? [POKE_DATA[n].t2] : [])],
+          disabled: usedPokemonNames.has(n)
+        }
+      })
+  }, [usedPokemonNames, usageLoaded])
 
   const handleSelectSlot = (idx: number) => {
     dispatch({ type: 'SELECT_SLOT', slot: idx })
@@ -86,6 +100,23 @@ export default function NewTeamBuilder() {
 
   const updateField = (field: string, value: string) => {
     dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field, value })
+  }
+
+  const handleItemChange = (v: string) => {
+    const megas = activeSlot.pokemon ? MEGA_MAP[activeSlot.pokemon] : null
+    if (megas) {
+      const megaEntry = Object.entries(megas).find(([, stone]) => stone === v)
+      if (megaEntry) {
+        dispatch({ type: 'SELECT_MEGA', slot: activeSlotIdx, megaForme: megaEntry[0], stone: v })
+        return
+      }
+      if (activeSlot.megaForme) {
+        dispatch({ type: 'SELECT_MEGA', slot: activeSlotIdx, megaForme: '', stone: '' })
+        dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'item', value: v })
+        return
+      }
+    }
+    updateField('item', v)
   }
 
   const effectiveName = getEffectivePokeName(activeSlot)
@@ -101,9 +132,38 @@ export default function NewTeamBuilder() {
     return foundEntry ? foundEntry[0] : null
   }, [activeSlot.pokemon, activeSlot.item])
 
+  useEffect(() => {
+    if (!megaFormeName) setViewingMegaForm(false)
+  }, [megaFormeName])
+
+  // Sync megaForme slot field with item-derived megaFormeName (handles pre-existing localStorage state)
+  useEffect(() => {
+    if (!activeSlot.pokemon) return
+    if (megaFormeName && megaFormeName !== activeSlot.megaForme) {
+      dispatch({ type: 'SELECT_MEGA', slot: activeSlotIdx, megaForme: megaFormeName, stone: activeSlot.item })
+    } else if (!megaFormeName && activeSlot.megaForme) {
+      dispatch({ type: 'SELECT_MEGA', slot: activeSlotIdx, megaForme: '', stone: '' })
+    }
+  }, [megaFormeName, activeSlotIdx])
+
+  const displayPokeData = viewingMegaForm && megaFormeName
+    ? (POKE_DATA[megaFormeName] ?? null)
+    : (activeSlot.pokemon ? POKE_DATA[activeSlot.pokemon] : null)
+
+  const isViewingMega = !!(viewingMegaForm && megaFormeName)
+  const displayedAbility = isViewingMega
+    ? extractName(activeSlot.ability)
+    : (megaFormeName ? (activeSlot.preMegaAbility || '') : extractName(activeSlot.ability))
+
   // CC Data for selects
   const abilityOptions = useMemo(() => {
-    const baseAbilities = activeSlot.ccAllAbilities ?? (pokeData?.ab ? [pokeData.ab] : [])
+    if (isViewingMega) {
+      return displayPokeData?.ab
+        ? [{ value: displayPokeData.ab, label: translateAbility(displayPokeData.ab), description: getAbilityDesc(displayPokeData.ab) }]
+        : []
+    }
+    const basePokeData = activeSlot.pokemon ? POKE_DATA[activeSlot.pokemon] : null
+    const baseAbilities = activeSlot.ccAllAbilities ?? (basePokeData?.ab ? [basePokeData.ab] : [])
     const ccAbilities = (activeSlot.ccAbilities as any[]) || []
     return [
       ...ccAbilities.map(e => ({
@@ -116,7 +176,7 @@ export default function NewTeamBuilder() {
         .filter(a => !ccAbilities.some(e => extractName(e.ability.name) === a))
         .map(a => ({ value: a, label: translateAbility(a), description: getAbilityDesc(a) }))
     ]
-  }, [activeSlot.ccAbilities, activeSlot.ccAllAbilities, pokeData])
+  }, [activeSlot.ccAbilities, activeSlot.ccAllAbilities, activeSlot.pokemon, displayPokeData, isViewingMega])
 
   const itemOptions = useMemo(() => {
     const baseItems = getItemList()
@@ -177,7 +237,16 @@ export default function NewTeamBuilder() {
     dispatch({ type: 'UPDATE_SP', slot: activeSlotIdx, stat, value })
   }
 
+  const [filterTabs, setFilterTabs] = useState<Record<string, 'custom' | 'threats'>>({ def: 'custom', off: 'custom', speed: 'custom' })
   const [tierSearch, setTierSearch] = useState('')
+  const [confirmNatSwap, setConfirmNatSwap] = useState<{
+    conflictStat: string
+    fallbackEv: number | null
+    fallbackReaches: number | null
+    neutralNatPlus: string
+    neutralNatMinus: string
+    tr: boolean
+  } | null>(null)
   const speedSP = (activeSlot.sps as Record<string, number>).sp || 0
   const isDraggingSpeedRef = useRef(false)
   const lastUpdatedSPRef = useRef<number | null>(null)
@@ -198,15 +267,15 @@ export default function NewTeamBuilder() {
     * playerBoostMult
 
   const currentSpeed = useMemo(() => {
-    if (!pokeData) return 0
-    const raw = getStats(pokeData, activeSlot.sps, activeSlot.natPlus, activeSlot.natMinus).sp
+    if (!displayPokeData) return 0
+    const raw = getStats(displayPokeData, activeSlot.sps, activeSlot.natPlus, activeSlot.natMinus).sp
     return Math.floor(raw * playerSpeedMult)
-  }, [pokeData, activeSlot.sps, activeSlot.natPlus, activeSlot.natMinus, playerSpeedMult])
+  }, [displayPokeData, activeSlot.sps, activeSlot.natPlus, activeSlot.natMinus, playerSpeedMult])
 
   const speedStatsInfo = useMemo(() => {
-    if (!pokeData) return { jumps: new Set<number>(), wastes: new Set<number>() }
+    if (!displayPokeData) return { jumps: new Set<number>(), wastes: new Set<number>() }
     // Base stat at 50 with 31 IVs and 0 EVs
-    const baseStatAt50 = Math.floor((pokeData.bs.sp * 2 + 31) * 0.5) + 5
+    const baseStatAt50 = Math.floor((displayPokeData.bs.sp * 2 + 31) * 0.5) + 5
     const plus = activeSlot.natPlus
     const minus = activeSlot.natMinus
     const natureBonus = (plus === 'sp') ? 1.1 : (minus === 'sp') ? 0.9 : 1
@@ -224,7 +293,7 @@ export default function NewTeamBuilder() {
       if (diff === 0) wastes.add(sp)
     }
     return { jumps, wastes }
-  }, [pokeData, activeSlot.natPlus, activeSlot.natMinus])
+  }, [displayPokeData, activeSlot.natPlus, activeSlot.natMinus])
 
   const oppTwMult = state.advTailwind ? 2 : 1
   const advSpeedBoost = state.advSpeedBoost ?? 0
@@ -274,6 +343,106 @@ export default function NewTeamBuilder() {
     list.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' })
   }, [currentSpeed, tierSearch])
 
+  const computeAutoTrial = (np: string, nm: string) => {
+    if (!displayPokeData) return null
+    const filters = activeSlot.speedFilters || []
+    if (filters.length === 0) return null
+    const tr = state.trickRoom
+    const uniqueTargets = Array.from(new Set(filters.map(f => f.speed)))
+    const sorted = tr
+      ? [...uniqueTargets].sort((a, b) => a - b)
+      : [...uniqueTargets].sort((a, b) => b - a)
+    for (const t of sorted) {
+      for (let ev = 0; ev <= 32; ev++) {
+        const sps = { ...activeSlot.sps, sp: ev }
+        const raw = getStats(displayPokeData, sps, np, nm).sp
+        const s = Math.floor(raw * playerSpeedMult)
+        const ok = tr ? s < t : s > t
+        if (ok) return { ev, reaches: t, topTarget: sorted[0] }
+      }
+    }
+    return null
+  }
+
+  const applyAutoSwap = (tr: boolean) => {
+    let newNatPlus = activeSlot.natPlus
+    let newNatMinus = activeSlot.natMinus
+    if (tr) {
+      newNatMinus = 'sp'
+      if (newNatPlus === 'sp') newNatPlus = ''
+    } else {
+      newNatPlus = 'sp'
+      if (newNatMinus === 'sp') newNatMinus = ''
+    }
+    const result = computeAutoTrial(newNatPlus, newNatMinus)
+    if (!result) {
+      handleUpdateSP('sp', 0)
+      return
+    }
+    if (newNatPlus !== activeSlot.natPlus) {
+      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'natPlus', value: newNatPlus })
+    }
+    if (newNatMinus !== activeSlot.natMinus) {
+      dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'natMinus', value: newNatMinus })
+    }
+    handleUpdateSP('sp', result.ev)
+  }
+
+  const handleAutoSpeed = () => {
+    if (!pokeData) return
+    const filters = activeSlot.speedFilters || []
+    if (filters.length === 0) return
+
+    const tr = state.trickRoom
+
+    // Step 1: current natures
+    const currentResult = computeAutoTrial(activeSlot.natPlus, activeSlot.natMinus)
+    if (currentResult && currentResult.reaches === currentResult.topTarget) {
+      handleUpdateSP('sp', currentResult.ev)
+      return
+    }
+
+    // Step 2: neutral speed — remove the nature that penalizes in current direction
+    // Normal: remove natMinus='sp' if present | TR: remove natPlus='sp' if present
+    const neutralNatPlus = tr && activeSlot.natPlus === 'sp' ? '' : activeSlot.natPlus
+    const neutralNatMinus = !tr && activeSlot.natMinus === 'sp' ? '' : activeSlot.natMinus
+    const isNeutralDifferent = neutralNatPlus !== activeSlot.natPlus || neutralNatMinus !== activeSlot.natMinus
+    if (isNeutralDifferent) {
+      const neutralResult = computeAutoTrial(neutralNatPlus, neutralNatMinus)
+      if (neutralResult && neutralResult.reaches === neutralResult.topTarget) {
+        if (neutralNatPlus !== activeSlot.natPlus)
+          dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'natPlus', value: neutralNatPlus })
+        if (neutralNatMinus !== activeSlot.natMinus)
+          dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'natMinus', value: neutralNatMinus })
+        handleUpdateSP('sp', neutralResult.ev)
+        return
+      }
+    }
+
+    // Step 3: full +sp / -sp nature change
+    const conflictField = tr ? activeSlot.natMinus : activeSlot.natPlus
+    if (conflictField && conflictField !== 'sp') {
+      // On cancel: best reachable with neutral speed natures (no +sp penalty removed)
+      const cancelNatPlus = tr && activeSlot.natPlus === 'sp' ? '' : activeSlot.natPlus
+      const cancelNatMinus = !tr && activeSlot.natMinus === 'sp' ? '' : activeSlot.natMinus
+      const isNeutralDiff = cancelNatPlus !== activeSlot.natPlus || cancelNatMinus !== activeSlot.natMinus
+      const cancelResult = isNeutralDiff
+        ? computeAutoTrial(cancelNatPlus, cancelNatMinus)
+        : currentResult
+      setConfirmNatSwap({
+        conflictStat: conflictField,
+        fallbackEv: cancelResult?.ev ?? null,
+        fallbackReaches: cancelResult?.reaches ?? null,
+        neutralNatPlus: cancelNatPlus,
+        neutralNatMinus: cancelNatMinus,
+        tr,
+      })
+      return
+    }
+
+    applyAutoSwap(tr)
+  }
+
   const handleContainerMouseDown = (e: React.MouseEvent) => {
     if (!segmentsContainerRef.current) return
     e.preventDefault()
@@ -291,40 +460,50 @@ export default function NewTeamBuilder() {
 
   return (
     <div className="new-teambuilder-root">
-      {/* ... top bar remains same ... */}
-      {/* 6 Sélecteurs de Pokémon (Top Bar) */}
+      {/* 6 Sélecteurs de Pokémon (Sidebar gauche) */}
       <div className="top-selectors-grid">
         {team.map((slot, i) => {
           const isSelected = i === activeSlotIdx
           const hasPoke = !!slot.pokemon
+          const hasItem = hasPoke && !!slot.item && slot.item !== '(No Item)'
 
           return (
-            <div 
-              key={i} 
-              className={`top-slot-container ${isSelected ? 'active' : ''}`}
-              onClick={() => handleSelectSlot(i)}
+            <div
+              key={i}
+              className={`top-slot-container ${isSelected ? 'active' : ''} ${hasPoke ? 'has-poke' : 'no-poke'}`}
+              onClickCapture={() => handleSelectSlot(i)}
             >
-              <div className="slot-search-row" onClick={e => e.stopPropagation()}>
-                <div className="slot-search-action">
-                  <SearchSelect
-                    value={slot.pokemon}
-                    options={pokeOptions}
-                    onChange={(val) => handleUpdatePoke(i, val)}
-                    placeholder=""
-                    maxUnfiltered={50}
-                  />
-                </div>
+              <div className="slot-main">
+                {!hasPoke && <span className="slot-empty-num">{i + 1}</span>}
+                <SearchSelect
+                  value={slot.pokemon}
+                  options={pokeOptions}
+                  onChange={(val) => handleUpdatePoke(i, val)}
+                  placeholder="+ Pokémon"
+                  maxUnfiltered={150}
+                />
                 {hasPoke && (
                   <button
                     type="button"
                     className="slot-clear-btn"
-                    onClick={() => handleUpdatePoke(i, '')}
+                    onClick={(e) => { e.stopPropagation(); handleUpdatePoke(i, '') }}
                     aria-label="Retirer le Pokémon"
                   >
                     ✕
                   </button>
                 )}
               </div>
+              {hasItem && (
+                <div className="slot-item-line">
+                  <img
+                    className="slot-item-icon"
+                    src={itemSpriteUrl(slot.item)}
+                    alt=""
+                    onError={e => { e.currentTarget.style.display = 'none' }}
+                  />
+                  <span className="slot-item-name">{ITEM_TRANSLATIONS[slot.item] || slot.item}</span>
+                </div>
+              )}
             </div>
           )
         })}
@@ -338,20 +517,26 @@ export default function NewTeamBuilder() {
             <div className="visual-side-panel">
               <div className="pokemon-visual-frame">
                 <div className={`visual-image-container ${megaFormeName ? 'has-mega' : ''}`}>
-                  <div className="visual-image-box base-artwork">
-                    <img 
-                      src={artworkUrl(activeSlot.pokemon)} 
-                      alt={activeSlot.pokemon} 
+                  <div
+                    className={`visual-image-box base-artwork${megaFormeName ? ` form-clickable${!viewingMegaForm ? ' form-selected' : ''}` : ''}`}
+                    onClick={() => { if (megaFormeName) setViewingMegaForm(false) }}
+                  >
+                    <img
+                      src={artworkUrl(activeSlot.pokemon)}
+                      alt={activeSlot.pokemon}
                       className="visual-artwork"
                       onError={e => { e.currentTarget.src = spriteUrl(activeSlot.pokemon) }}
                     />
                     {MEGA_MAP[activeSlot.pokemon] && <div className="base-indicator">BASE</div>}
                   </div>
                   {megaFormeName && (
-                    <div className="visual-image-box mega-artwork">
-                      <img 
-                        src={artworkUrl(megaFormeName)} 
-                        alt={megaFormeName} 
+                    <div
+                      className={`visual-image-box mega-artwork form-clickable${viewingMegaForm ? ' form-selected' : ''}`}
+                      onClick={() => setViewingMegaForm(true)}
+                    >
+                      <img
+                        src={artworkUrl(megaFormeName)}
+                        alt={megaFormeName}
                         className="visual-artwork"
                         onError={e => { e.currentTarget.src = spriteUrl(megaFormeName) }}
                       />
@@ -364,14 +549,14 @@ export default function NewTeamBuilder() {
                     {frenchName}
                   </h2>
                   <div className="visual-types">
-                    {pokeData && (
+                    {displayPokeData && (
                       <>
-                        <span className="type-badge" style={{ background: `var(--type-${pokeData.t1.toLowerCase()})` }}>
-                          {TYPE_TRANSLATIONS[pokeData.t1] || pokeData.t1}
+                        <span className="type-badge" style={{ background: `var(--type-${displayPokeData.t1.toLowerCase()})` }}>
+                          {TYPE_TRANSLATIONS[displayPokeData.t1] || displayPokeData.t1}
                         </span>
-                        {pokeData.t2 && (
-                          <span className="type-badge" style={{ background: `var(--type-${pokeData.t2.toLowerCase()})` }}>
-                            {TYPE_TRANSLATIONS[pokeData.t2] || pokeData.t2}
+                        {displayPokeData.t2 && (
+                          <span className="type-badge" style={{ background: `var(--type-${displayPokeData.t2.toLowerCase()})` }}>
+                            {TYPE_TRANSLATIONS[displayPokeData.t2] || displayPokeData.t2}
                           </span>
                         )}
                       </>
@@ -379,12 +564,12 @@ export default function NewTeamBuilder() {
                   </div>
                 </div>
 
-                {pokeData && (
+                {displayPokeData && (
                   <div className="visual-stats">
                     {(() => {
-                      const computedStats = getStats(pokeData, activeSlot.sps, activeSlot.natPlus, activeSlot.natMinus)
+                      const computedStats = getStats(displayPokeData, activeSlot.sps, activeSlot.natPlus, activeSlot.natMinus)
                       return STAT_KEYS.map((key, i) => {
-                        const baseVal = (pokeData.bs as Record<string, number>)[key] || 0
+                        const baseVal = (displayPokeData.bs as Record<string, number>)[key] || 0
                         const finalVal = (computedStats as Record<string, number>)[key] || 0
                         const pct = Math.min(100, (finalVal / 250) * 100)
                         return (
@@ -392,8 +577,8 @@ export default function NewTeamBuilder() {
                             <span className="visual-stat-label">{STAT_LABELS[i]}</span>
                             <span className="visual-stat-base">{baseVal}</span>
                             <div className="visual-stat-bar-bg">
-                              <div 
-                                className="visual-stat-bar-fill" 
+                              <div
+                                className="visual-stat-bar-fill"
                                 style={{ width: `${pct}%`, background: `var(--stat-${key})` }}
                               />
                             </div>
@@ -403,7 +588,7 @@ export default function NewTeamBuilder() {
                       })
                     })()}
                     <div className="visual-stat-total">
-                      Total: <span>{Object.values(pokeData.bs).reduce((a, b) => a + (b as number), 0)}</span>
+                      Total: <span>{Object.values(displayPokeData.bs).reduce((a, b) => a + (b as number), 0)}</span>
                     </div>
                   </div>
                 )}
@@ -424,10 +609,18 @@ export default function NewTeamBuilder() {
                 <div className="form-group">
                   <label>Talent</label>
                   <SearchSelect
-                    value={extractName(activeSlot.ability)}
+                    value={displayedAbility}
                     options={abilityOptions}
-                    onChange={v => updateField('ability', v)}
+                    onChange={v => {
+                      if (isViewingMega) return
+                      if (megaFormeName) {
+                        dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'preMegaAbility', value: v })
+                      } else {
+                        updateField('ability', v)
+                      }
+                    }}
                     placeholder=""
+                    disabled={isViewingMega && activeSlot.pokemon !== 'Aegislash'}
                   />
                 </div>
 
@@ -436,7 +629,7 @@ export default function NewTeamBuilder() {
                   <SearchSelect
                     value={activeSlot.item}
                     options={itemOptions}
-                    onChange={v => updateField('item', v)}
+                    onChange={handleItemChange}
                     placeholder=""
                   />
                 </div>
@@ -504,34 +697,6 @@ export default function NewTeamBuilder() {
                 )}
                 {activeTab === 'evs-spe' && (
                   <div className="speed-ev-config">
-                    <div className="speed-ev-header">
-                      {pokeData && (
-                        (() => {
-                          const computedStats = getStats(pokeData, activeSlot.sps, activeSlot.natPlus, activeSlot.natMinus)
-                          const finalVal = computedStats.sp
-                          const pct = Math.min(100, (finalVal / 250) * 100)
-                          return (
-                            <div className="visual-stat-row speed-header-stat">
-                              <span className="visual-stat-label">{STAT_LABELS[5]}</span>
-                              <span className="visual-stat-base">{(pokeData.bs as any).sp}</span>
-                              <div className="visual-stat-bar-bg">
-                                <div 
-                                  className="visual-stat-bar-fill" 
-                                  style={{ 
-                                    width: `${pct}%`, 
-                                    background: `var(--stat-sp)` 
-                                  }}
-                                />
-                              </div>
-                              <span className="visual-stat-final">
-                                {finalVal}
-                              </span>
-                            </div>
-                          )
-                        })()
-                      )}
-                    </div>
-                    
                     <div className="speed-ev-controls-row">
                       <div className="speed-ev-selector-bar">
                         <button 
@@ -542,15 +707,7 @@ export default function NewTeamBuilder() {
                           0
                         </button>
                         
-                        <button 
-                          className="speed-btn dec-btn" 
-                          onClick={() => handleUpdateSP('sp', Math.max(0, speedSP - 1))}
-                          disabled={speedSP === 0}
-                        >
-                          -1
-                        </button>
-
-                        <div 
+                        <div
                           className="speed-segments-container"
                           ref={segmentsContainerRef}
                           onMouseDown={handleContainerMouseDown}
@@ -560,8 +717,8 @@ export default function NewTeamBuilder() {
                             const isJump = speedStatsInfo.jumps.has(val);
                             const isWaste = speedStatsInfo.wastes.has(val);
                             return (
-                              <div 
-                                key={val} 
+                              <div
+                                key={val}
                                 className={`speed-segment ${val <= speedSP ? 'active' : ''} ${isJump ? 'jump' : ''} ${isWaste ? 'waste' : ''}`}
                                 title={isJump ? "Palier Nature (+2)" : isWaste ? "Perte Nature (+0)" : undefined}
                               />
@@ -569,15 +726,7 @@ export default function NewTeamBuilder() {
                           })}
                         </div>
 
-                        <button 
-                          className="speed-btn inc-btn" 
-                          onClick={() => handleUpdateSP('sp', Math.min(32, speedSP + 1))}
-                          disabled={speedSP === 32}
-                        >
-                          +1
-                        </button>
-
-                        <button 
+                        <button
                           className="speed-btn max-btn" 
                           onClick={() => handleUpdateSP('sp', 32)}
                           title="Max (32)"
@@ -671,18 +820,20 @@ export default function NewTeamBuilder() {
                           </div>
                         </div>
                       </div>
+                      <div className="speed-tiers-search">
+                        <input
+                          className="tier-search-input"
+                          type="text"
+                          placeholder="Rechercher un Pokémon..."
+                          value={tierSearch}
+                          onChange={e => setTierSearch(e.target.value)}
+                        />
+                      </div>
                       <div className="speed-tiers-header">
                         <div className="tier-col-speed">Vitesse</div>
                         <div className="tier-col-name">Pokémon</div>
-                        <div className="tier-col-details">
-                          <input
-                            className="tier-search-input"
-                            type="text"
-                            placeholder="Rechercher..."
-                            value={tierSearch}
-                            onChange={e => setTierSearch(e.target.value)}
-                          />
-                        </div>
+                        <div className="tier-col-details">Détails</div>
+                        <div className="tier-col-action">Filtre</div>
                       </div>
                       <div className="speed-tiers-list" ref={tiersListRef}>
                         {loadingSpeedTiers ? (
@@ -693,6 +844,11 @@ export default function NewTeamBuilder() {
                           const tr = state.trickRoom
                           const isOutspd = (eff: number) => tr ? currentSpeed < eff : currentSpeed > eff
 
+                          const oppParts: string[] = []
+                          if (state.advTailwind) oppParts.push('Vent Arrière')
+                          if (advSpeedBoost !== 0) oppParts.push(`${fmtStage(advSpeedBoost)} Vit`)
+                          const oppSuffix = oppParts.length ? ' | ' + oppParts.join(' | ') : ''
+
                           if (q) {
                             const filtered = speedTiers
                               .filter(t =>
@@ -701,6 +857,7 @@ export default function NewTeamBuilder() {
                               )
                               .map((tier, i) => {
                                 const effSpeed = Math.floor(tier.speed * oppSpeedMult)
+                                const alreadyAdded = activeSlot.speedFilters?.some(f => f.pokemonName === tier.pokemon.nom && f.speed === effSpeed) ?? false
                                 return (
                                   <div key={i} className={`speed-tier-row${isOutspd(effSpeed) ? ' outspeeded' : ''}${currentSpeed === effSpeed ? ' tied' : ''}`}>
                                     <div className="tier-col-speed">{effSpeed}</div>
@@ -709,7 +866,26 @@ export default function NewTeamBuilder() {
                                       {tier.percent != null && <span className="tier-usage">{Math.floor(tier.percent)}%</span>}
                                     </div>
                                     <div className="tier-col-details">
-                                      <span className="tier-comment">{tier.bonus}</span>
+                                      <span className="tier-comment">{formatTierBonus(tier.bonus) + oppSuffix}</span>
+                                    </div>
+                                    <div className="tier-col-action">
+                                      <button
+                                        type="button"
+                                        className={`tier-add-btn${alreadyAdded ? ' added' : ''}`}
+                                        disabled={alreadyAdded}
+                                        onClick={() => dispatch({
+                                          type: 'ADD_SPEED_FILTER',
+                                          slot: activeSlotIdx,
+                                          filter: {
+                                            id: `${tier.pokemon.name}-${effSpeed}-${Date.now()}`,
+                                            pokemonName: tier.pokemon.nom,
+                                            speed: effSpeed,
+                                            bonus: formatTierBonus(tier.bonus) + oppSuffix
+                                          }
+                                        })}
+                                      >
+                                        {alreadyAdded ? 'Ajouté' : 'Ajouter'}
+                                      </button>
                                     </div>
                                   </div>
                                 )
@@ -720,21 +896,41 @@ export default function NewTeamBuilder() {
                           const natSign = activeSlot.natPlus === 'sp' ? '+' : activeSlot.natMinus === 'sp' ? '-' : ''
                           const buildSuffix = (): string => {
                             const parts: string[] = []
-                            if (abilityBoostActive) parts.push(`avec ${translateAbility(currentAbilityName)}`)
+                            if (abilityBoostActive) parts.push(translateAbility(currentAbilityName))
                             if (state.tailwind) parts.push('Vent Arrière')
-                            if (activeSlot.item === 'Choice Scarf') parts.push('Choix Echarpe')
+                            if (activeSlot.item === 'Choice Scarf') parts.push('Mouchoir Choix')
                             if (playerBoostStage !== 0) parts.push(`${fmtStage(playerBoostStage)} Vit`)
-                            return parts.length ? ' ' + parts.join(' + ') : ''
+                            return parts.length ? ' | ' + parts.join(' | ') : ''
                           }
                           const suffix = buildSuffix()
                           const playerBonus = `${speedSP} EV${natSign}${suffix}`
 
+                          const playerAlreadyAdded = activeSlot.speedFilters?.some(f => f.pokemonName === frenchName && f.speed === currentSpeed) ?? false
                           const playerRow = (
                             <div key="player" ref={playerRowRef} className="speed-tier-row player">
                               <div className="tier-col-speed">{currentSpeed}</div>
                               <div className="tier-col-name">{frenchName}</div>
                               <div className="tier-col-details">
                                 <span className="tier-comment">{playerBonus}</span>
+                              </div>
+                              <div className="tier-col-action">
+                                <button
+                                  type="button"
+                                  className={`tier-add-btn${playerAlreadyAdded ? ' added' : ''}`}
+                                  disabled={playerAlreadyAdded}
+                                  onClick={() => dispatch({
+                                    type: 'ADD_SPEED_FILTER',
+                                    slot: activeSlotIdx,
+                                    filter: {
+                                      id: `player-${currentSpeed}-${Date.now()}`,
+                                      pokemonName: frenchName,
+                                      speed: currentSpeed,
+                                      bonus: playerBonus
+                                    }
+                                  })}
+                                >
+                                  {playerAlreadyAdded ? 'Ajouté' : 'Ajouter'}
+                                </button>
                               </div>
                             </div>
                           )
@@ -746,6 +942,7 @@ export default function NewTeamBuilder() {
 
                           const rows = speedTiers.map((tier, i) => {
                             const effSpeed = Math.floor(tier.speed * oppSpeedMult)
+                            const alreadyAdded = activeSlot.speedFilters?.some(f => f.pokemonName === tier.pokemon.nom && f.speed === effSpeed) ?? false
                             return (
                               <div
                                 key={i}
@@ -757,7 +954,26 @@ export default function NewTeamBuilder() {
                                   {tier.percent != null && <span className="tier-usage">{Math.floor(tier.percent)}%</span>}
                                 </div>
                                 <div className="tier-col-details">
-                                  <span className="tier-comment">{tier.bonus}</span>
+                                  <span className="tier-comment">{formatTierBonus(tier.bonus) + oppSuffix}</span>
+                                </div>
+                                <div className="tier-col-action">
+                                  <button
+                                    type="button"
+                                    className={`tier-add-btn${alreadyAdded ? ' added' : ''}`}
+                                    disabled={alreadyAdded}
+                                    onClick={() => dispatch({
+                                      type: 'ADD_SPEED_FILTER',
+                                      slot: activeSlotIdx,
+                                      filter: {
+                                        id: `${tier.pokemon.name}-${effSpeed}-${Date.now()}`,
+                                        pokemonName: tier.pokemon.nom,
+                                        speed: effSpeed,
+                                        bonus: formatTierBonus(tier.bonus) + oppSuffix
+                                      }
+                                    })}
+                                  >
+                                    {alreadyAdded ? 'Ajouté' : 'Ajouter'}
+                                  </button>
                                 </div>
                               </div>
                             )
@@ -772,6 +988,96 @@ export default function NewTeamBuilder() {
                 )}
               </div>
             </div>
+
+            {/* Panneau de Filtres (Side Right) */}
+            <div className="filters-side-panel">
+              <div className="filters-container">
+                <div className="filters-header">
+                  <h3>Filtres</h3>
+                </div>
+                <div className="speed-filters-section">
+                  <div className="filter-group">
+                    <div className="filter-group-title">
+                      <span>Défensif</span>
+                      <button type="button" className="filter-auto-btn" disabled title="Non implémenté">Auto</button>
+                    </div>
+                    <div className="filter-sub-tabs">
+                      <button className={`filter-sub-tab${filterTabs.def === 'custom' ? ' active' : ''}`} onClick={() => setFilterTabs(t => ({ ...t, def: 'custom' }))}>Custom</button>
+                      <button className={`filter-sub-tab${filterTabs.def === 'threats' ? ' active' : ''}`} onClick={() => setFilterTabs(t => ({ ...t, def: 'threats' }))}>Common Threats</button>
+                    </div>
+                    {filterTabs.def === 'custom' && <div className="filter-content-placeholder">Aucun filtre défensif</div>}
+                    {filterTabs.def === 'threats' && <div className="filter-content-placeholder">Non implémenté</div>}
+                  </div>
+                  <div className="filter-group">
+                    <div className="filter-group-title">
+                      <span>Offensif</span>
+                      <button type="button" className="filter-auto-btn" disabled title="Non implémenté">Auto</button>
+                    </div>
+                    <div className="filter-sub-tabs">
+                      <button className={`filter-sub-tab${filterTabs.off === 'custom' ? ' active' : ''}`} onClick={() => setFilterTabs(t => ({ ...t, off: 'custom' }))}>Custom</button>
+                      <button className={`filter-sub-tab${filterTabs.off === 'threats' ? ' active' : ''}`} onClick={() => setFilterTabs(t => ({ ...t, off: 'threats' }))}>Common Threats</button>
+                    </div>
+                    {filterTabs.off === 'custom' && <div className="filter-content-placeholder">Aucun filtre offensif</div>}
+                    {filterTabs.off === 'threats' && <div className="filter-content-placeholder">Non implémenté</div>}
+                  </div>
+                  <div className="filter-group">
+                    <div className="filter-group-title">
+                      <span>Vitesse</span>
+                      <button
+                        type="button"
+                        className="filter-auto-btn"
+                        onClick={handleAutoSpeed}
+                        disabled={!activeSlot.speedFilters || activeSlot.speedFilters.length === 0}
+                        title="Calcule EVs/Nature pour outspeed les filtres"
+                      >
+                        Auto
+                      </button>
+                    </div>
+                    <div className="filter-sub-tabs">
+                      <button className={`filter-sub-tab${filterTabs.speed === 'custom' ? ' active' : ''}`} onClick={() => setFilterTabs(t => ({ ...t, speed: 'custom' }))}>Custom</button>
+                      <button className={`filter-sub-tab${filterTabs.speed === 'threats' ? ' active' : ''}`} onClick={() => setFilterTabs(t => ({ ...t, speed: 'threats' }))}>Common Threats</button>
+                    </div>
+                    {filterTabs.speed === 'custom' && (
+                      activeSlot.speedFilters && activeSlot.speedFilters.length > 0 ? (
+                        <div className="active-filters-list">
+                          {[...activeSlot.speedFilters].sort((a, b) => state.trickRoom ? a.speed - b.speed : b.speed - a.speed).map(f => {
+                            const tr = state.trickRoom
+                            const isOut = tr ? currentSpeed < f.speed : currentSpeed > f.speed
+                            const isTie = currentSpeed === f.speed
+                            const statusClass = isTie ? 'tied' : isOut ? 'outspeeded' : 'underspeeded'
+
+                            return (
+                              <div
+                                key={f.id}
+                                className={`active-filter-item ${statusClass}`}
+                                onMouseEnter={f.bonus ? e => handleFilterEnter(e, f.bonus!) : undefined}
+                                onMouseLeave={f.bonus ? handleFilterLeave : undefined}
+                              >
+                                <span className="filter-item-speed">{f.speed}</span>
+                                <div className="filter-item-info">
+                                  <span className="filter-item-name">{f.pokemonName}</span>
+                                  {f.bonus && <span className="filter-item-bonus">{f.bonus}</span>}
+                                </div>
+                                <button
+                                  className="filter-item-remove"
+                                  onClick={() => dispatch({ type: 'REMOVE_SPEED_FILTER', slot: activeSlotIdx, id: f.id })}
+                                  title="Retirer le filtre"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="filter-content-placeholder">Aucun filtre vitesse</div>
+                      )
+                    )}
+                    {filterTabs.speed === 'threats' && <div className="filter-content-placeholder">Non implémenté</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="empty-editor-state">
@@ -779,6 +1085,82 @@ export default function NewTeamBuilder() {
           </div>
         )}
       </div>
+
+      {filterTooltip && (
+        <div ref={filterTooltipRef} className="search-select-desc-tooltip" style={filterTooltip.style}>
+          {filterTooltip.text.split('\n').map((line, i, arr) => (
+            <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+          ))}
+        </div>
+      )}
+
+      {confirmNatSwap && (
+        <div className="auto-modal-overlay" onClick={() => {
+          if (confirmNatSwap.neutralNatPlus !== activeSlot.natPlus)
+            dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'natPlus', value: confirmNatSwap.neutralNatPlus })
+          if (confirmNatSwap.neutralNatMinus !== activeSlot.natMinus)
+            dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'natMinus', value: confirmNatSwap.neutralNatMinus })
+          handleUpdateSP('sp', confirmNatSwap.fallbackEv ?? 0)
+          setConfirmNatSwap(null)
+        }}>
+          <div className="auto-modal" onClick={e => e.stopPropagation()}>
+            <div className="auto-modal-header">
+              <span className="auto-modal-icon">⚠</span>
+              <h3>Modification de nature requise</h3>
+            </div>
+            <div className="auto-modal-body">
+              <p className="auto-modal-text">
+                Pour outspeed la cible maximale, la nature doit être modifiée :
+              </p>
+              <div className="auto-modal-natures">
+                <div className="auto-modal-nat-block">
+                  <span className="auto-modal-nat-tag current">Actuelle</span>
+                  <div className={`auto-modal-nat ${confirmNatSwap.tr ? 'minus' : 'plus'} faded`}>
+                    <span className="nat-sign">{confirmNatSwap.tr ? '−' : '+'}</span>
+                    <span className="nat-stat">{NATURE_STAT_LABELS[confirmNatSwap.conflictStat]}</span>
+                  </div>
+                </div>
+                <span className="auto-modal-arrow">→</span>
+                <div className="auto-modal-nat-block">
+                  <span className="auto-modal-nat-tag new">Nouvelle</span>
+                  <div className={`auto-modal-nat ${confirmNatSwap.tr ? 'minus' : 'plus'}`}>
+                    <span className="nat-sign">{confirmNatSwap.tr ? '−' : '+'}</span>
+                    <span className="nat-stat">VIT</span>
+                  </div>
+                </div>
+              </div>
+              {confirmNatSwap.fallbackEv !== null && confirmNatSwap.fallbackReaches !== null && (
+                <p className="auto-modal-note">
+                  En refusant : {confirmNatSwap.fallbackEv} EV pour outspeed {confirmNatSwap.fallbackReaches} (cible inférieure).
+                </p>
+              )}
+              {confirmNatSwap.fallbackEv === null && (
+                <p className="auto-modal-note warn">
+                  En refusant : aucune cible atteignable, EV mis à 0.
+                </p>
+              )}
+            </div>
+            <div className="auto-modal-actions">
+              <button className="auto-modal-btn cancel" onClick={() => {
+                if (confirmNatSwap.neutralNatPlus !== activeSlot.natPlus)
+                  dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'natPlus', value: confirmNatSwap.neutralNatPlus })
+                if (confirmNatSwap.neutralNatMinus !== activeSlot.natMinus)
+                  dispatch({ type: 'UPDATE_SLOT_FIELD', slot: activeSlotIdx, field: 'natMinus', value: confirmNatSwap.neutralNatMinus })
+                handleUpdateSP('sp', confirmNatSwap.fallbackEv ?? 0)
+                setConfirmNatSwap(null)
+              }}>
+                Annuler
+              </button>
+              <button className="auto-modal-btn confirm" onClick={() => {
+                applyAutoSwap(confirmNatSwap.tr)
+                setConfirmNatSwap(null)
+              }}>
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

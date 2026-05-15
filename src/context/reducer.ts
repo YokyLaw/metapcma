@@ -1,4 +1,4 @@
-import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey, DefaultSetSnapshot } from '../types'
+import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey, DefaultSetSnapshot, SpeedFilter } from '../types'
 import { POKE_DATA } from '../data/pokeData'
 import { getMoveData } from '../calc/moveHelpers'
 import { MEGA_MAP } from '../data/megaMap'
@@ -62,6 +62,7 @@ function makeSlot(id: number): TeamSlot {
     useDefaultSet: false,
     preDefaultSet: null,
     speedAbilityActive: false,
+    speedFilters: [],
   }
 }
 
@@ -198,6 +199,8 @@ export type Action =
   | { type: 'ADD_TO_MATCHUP_CALC'; pokeName: string }
   | { type: 'REMOVE_FROM_MATCHUP_CALC'; pokeName: string }
   | { type: 'SET_MATCHUP_ROWS'; matchupRows: TableRow[] }
+  | { type: 'ADD_SPEED_FILTER'; slot: number; filter: SpeedFilter }
+  | { type: 'REMOVE_SPEED_FILTER'; slot: number; id: string }
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -209,6 +212,7 @@ export function appReducer(state: AppState, action: Action): AppState {
             ability: extractStr((slot as unknown as Record<string, unknown>).ability),
             item: extractStr((slot as unknown as Record<string, unknown>).item) || '(No Item)',
             moves: ((slot as unknown as Record<string, unknown>).moves as unknown[] ?? []).map(m => extractStr(m)) as [string, string, string, string],
+            speedFilters: (slot as any).speedFilters ?? [],
           }))
         : state.team
       const matchupCalcList = Array.isArray(action.payload.matchupCalcList)
@@ -742,6 +746,22 @@ export function appReducer(state: AppState, action: Action): AppState {
       const team = [...state.team]
       const slot = team[action.slot]
       team[action.slot] = { ...slot, speedAbilityActive: !slot.speedAbilityActive }
+      return { ...state, team }
+    }
+
+    case 'ADD_SPEED_FILTER': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+      slot.speedFilters = [...slot.speedFilters, action.filter]
+      team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'REMOVE_SPEED_FILTER': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+      slot.speedFilters = slot.speedFilters.filter(f => f.id !== action.id)
+      team[action.slot] = slot
       return { ...state, team }
     }
 

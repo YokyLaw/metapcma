@@ -51,7 +51,8 @@
       "Bash(rtk proxy *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yokyl\\\\Documents\\\\Dev\\\\metapcma\" -Recurse -Force)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "PowerShell($r = Invoke-RestMethod -Uri \"https://www.coupcritique.fr/api/abilities\"; $r.abilities | ForEach-Object { \"$\\($_.name\\)|$\\($_.nom\\)\" }; Write-Host \"Total: $\\($r.abilities.Count\\)\")"
     ]
   }
 }

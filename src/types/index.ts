@@ -66,8 +66,9 @@ export interface TeamSlot {
   preMegaItem: string;
   useDefaultSet: boolean;
   preDefaultSet: DefaultSetSnapshot | null;
-  speedAbilityActive?: boolean;
-}
+  speedAbilityActive: boolean;
+  speedFilters: SpeedFilter[];
+  }
 
 export interface AdvOverride {
   sp_hp: number;
@@ -114,3 +115,11 @@ export type Weather = "" | "Sun" | "Rain" | "Sand" | "Snow";
 export type Terrain = "" | "Electric" | "Grassy" | "Psychic" | "Misty";
 export type Tailwind = boolean;
 export type SortKey = "usage" | "name" | "type" | "move" | "minPct" | "maxPct" | "matchup";
+
+export interface SpeedFilter {
+  id: string;
+  pokemonName: string;
+  speed: number;
+  bonus?: string;
+}
+

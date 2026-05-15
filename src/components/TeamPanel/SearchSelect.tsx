@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect, useLayoutEffect, useMemo, type CSSProperties } from 'react'
+import { useState, useRef, useEffect, useMemo, type CSSProperties } from 'react'
 
 import { POKEMON_TRANSLATIONS, TYPE_TRANSLATIONS } from '../../data/translations'
+import { useDescTooltip } from '../../hooks/useDescTooltip'
 
 export interface SearchOption {
   value: string
@@ -27,15 +28,7 @@ interface Props {
   showSearchIcon?: boolean
 }
 
-interface TooltipState {
-  text: string
-  anchor: { top: number; bottom: number; left: number; right: number }
-  style: CSSProperties
-}
-
 const LIST_MAX_H = 200
-const TOOLTIP_W = 260
-const MEASURING_STYLE: CSSProperties = { visibility: 'hidden', top: 0, left: 0, width: TOOLTIP_W }
 
 export default function SearchSelect({
   value,
@@ -52,11 +45,9 @@ export default function SearchSelect({
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
   const [listStyle, setListStyle] = useState<CSSProperties>({})
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const tooltipRef = useRef<HTMLDivElement>(null)
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { tooltip, tooltipRef, handleEnter, handleLeave } = useDescTooltip()
 
   const translate = (val: string) => POKEMON_TRANSLATIONS[val] || val
 
@@ -67,28 +58,8 @@ export default function SearchSelect({
   }, [open])
 
   useEffect(() => {
-    if (!open) setTooltip(null)
+    if (!open) handleLeave()
   }, [open])
-
-  // Second pass: once tooltip is rendered hidden, measure and reposition
-  useLayoutEffect(() => {
-    if (!tooltip || tooltip.style !== MEASURING_STYLE || !tooltipRef.current) return
-    const h = tooltipRef.current.offsetHeight
-    const { top, bottom, left, right } = tooltip.anchor
-    const spaceRight = window.innerWidth - right - 8
-    const clampedLeft = Math.min(left, window.innerWidth - TOOLTIP_W - 8)
-    let style: CSSProperties
-    const spaceBelow = window.innerHeight - bottom - 8
-    const raisedTop = Math.max(8, window.innerHeight - 8 - h)
-    if (spaceBelow >= h) {
-      style = { top: bottom + 4, left: clampedLeft, width: TOOLTIP_W }
-    } else if (spaceRight >= TOOLTIP_W) {
-      style = { top: raisedTop, left: right + 6, width: TOOLTIP_W }
-    } else {
-      style = { top: raisedTop, left: left - TOOLTIP_W - 6, width: TOOLTIP_W }
-    }
-    setTooltip(prev => prev ? { ...prev, style } : null)
-  }, [tooltip])
 
   const currentOption = useMemo(() => options.find(o => o.value === value), [options, value])
   const currentLabel = currentOption ? translate(currentOption.label) : translate(value)
@@ -128,8 +99,7 @@ export default function SearchSelect({
     }
     setSearch('')
     setOpen(true)
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
-    setTooltip(null)
+    handleLeave()
   }
 
   function select(val: string) {
@@ -150,23 +120,6 @@ export default function SearchSelect({
     document.addEventListener('mousedown', onClickOutside)
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [open])
-
-  function handleEnter(e: React.MouseEvent<HTMLElement>, desc: string) {
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
-    const rect = e.currentTarget.getBoundingClientRect()
-    tooltipTimer.current = setTimeout(() => {
-      setTooltip({
-        text: desc,
-        anchor: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right },
-        style: MEASURING_STYLE,
-      })
-    }, 250)
-  }
-
-  function handleLeave() {
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
-    setTooltip(null)
-  }
 
   return (
     <div className={'search-select' + (className ? ' ' + className : '')} ref={ref} onClick={e => e.stopPropagation()} onMouseLeave={handleLeave}>
@@ -209,7 +162,16 @@ export default function SearchSelect({
         )
       })()}
       {open && (
-        <ul className="search-select-list" style={listStyle} onClick={e => e.stopPropagation()} onScroll={handleLeave}>
+        <ul
+          className="search-select-list"
+          style={listStyle}
+          onClick={e => e.stopPropagation()}
+          onScroll={handleLeave}
+          onWheel={e => {
+            e.preventDefault()
+            e.currentTarget.scrollTop += Math.sign(e.deltaY) * 20
+          }}
+        >
           {placeholder && (
             <li
               className={'search-select-item' + (value === '' ? ' active' : '')}
