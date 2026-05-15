@@ -73,6 +73,8 @@ export default function TeamBuilderView() {
       preMegaItem: '',
       useDefaultSet: false,
       preDefaultSet: null,
+      speedAbilityActive: false,
+      speedFilters: [],
     }))
     dispatch({ type: 'LOAD_STATE', payload: { team: emptyTeam } })
   }
@@ -102,6 +104,8 @@ export default function TeamBuilderView() {
         preMegaItem: '',
         useDefaultSet: false,
         preDefaultSet: null,
+        speedAbilityActive: false,
+        speedFilters: [],
       }))
       const showdownToMega: Record<string, { baseName: string; megaName: string; stone: string }> = {}
       for (const [baseName, megas] of Object.entries(MEGA_MAP)) {

@@ -76,6 +76,8 @@ export default function TeamPanel() {
         preMegaItem: '',
         useDefaultSet: false,
         preDefaultSet: null,
+        speedAbilityActive: false,
+        speedFilters: [],
       }))
       blocks.slice(0, 6).forEach((block, i) => {
         const lines = block.split('\n').map(l => l.trim()).filter(l => !l.startsWith('//'))
