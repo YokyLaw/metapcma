@@ -13,7 +13,7 @@ const PERSIST_KEYS: (keyof AppState)[] = [
   'advStats', 'sortKey', 'sortAsc', 'filterType', 'filterKO',
   'showLowUsage', 'matchupAdvName', 'matchupCalcList', 'slotNotes',
   'advMoves', 'advItems', 'advAutoSet', 'advPreAutoSet', 'advBoosts',
-  'advSpeedBoost', 'speedFilters',
+  'advSpeedBoost',
 ]
 
 interface AppContextValue {
