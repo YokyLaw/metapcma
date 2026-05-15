@@ -17,6 +17,7 @@ import { getAbilityDesc } from '../hooks/useAbilityDesc'
 import { getItemList, getItemDesc } from '../hooks/useItemDesc'
 import { useSpeedTiers } from '../hooks/useSpeedTiers'
 import { useDescTooltip } from '../hooks/useDescTooltip'
+import type { StatKey } from '../types'
 
 type ConfigTab = 'moves' | 'evs-def' | 'evs-off' | 'evs-spe'
 
@@ -233,7 +234,7 @@ export default function NewTeamBuilder() {
     dispatch({ type: 'SET_SLOT_NOTES', slot: activeSlotIdx, notes: val })
   }
 
-  const handleUpdateSP = (stat: string, value: number) => {
+  const handleUpdateSP = (stat: StatKey, value: number) => {
     dispatch({ type: 'UPDATE_SP', slot: activeSlotIdx, stat, value })
   }
 
