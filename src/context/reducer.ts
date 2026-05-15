@@ -61,6 +61,7 @@ function makeSlot(id: number): TeamSlot {
     preMegaItem: '',
     useDefaultSet: false,
     preDefaultSet: null,
+    speedAbilityActive: false,
   }
 }
 
@@ -99,6 +100,7 @@ export interface AppState {
   advAutoSet: Record<string, boolean>
   advPreAutoSet: Record<string, AdvPreAutoSet>
   advBoosts: Record<string, Record<string, number>>
+  advSpeedBoost: number
 }
 
 interface AdvPreAutoSet {
@@ -143,6 +145,7 @@ export const initialState: AppState = {
   advAutoSet: {},
   advPreAutoSet: {},
   advBoosts: {},
+  advSpeedBoost: 0,
 }
 
 export type Action =
@@ -157,6 +160,8 @@ export type Action =
   | { type: 'SET_CC_DATA'; slot: number; pokemon: string; ccMoves: unknown[] | null; ccItems: unknown[] | null; ccAbilities: unknown[] | null; ccNature?: { natPlus: string; natMinus: string } | null; ccSps?: StatMap | null; allAbilities?: string[] }
   | { type: 'TOGGLE_DEFAULT_SET'; slot: number }
   | { type: 'APPLY_DEFAULT_SET'; slot: number }
+  | { type: 'TOGGLE_SLOT_SPEED_ABILITY'; slot: number }
+  | { type: 'SET_ADV_SPEED_BOOST'; value: number }
   | { type: 'SET_WEATHER'; weather: Weather }
   | { type: 'SET_TERRAIN'; terrain: Terrain }
   | { type: 'SET_TAILWIND'; value: boolean }
@@ -228,6 +233,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.natPlus   = ''
         slot.natMinus  = ''
         slot.megaForme = ''
+        slot.speedAbilityActive = false
         slot.ccMoves        = null
         slot.ccItems        = null
         slot.ccAbilities    = null
@@ -726,6 +732,16 @@ export function appReducer(state: AppState, action: Action): AppState {
       }
 
       team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'SET_ADV_SPEED_BOOST':
+      return { ...state, advSpeedBoost: Math.max(-6, Math.min(6, action.value)) }
+
+    case 'TOGGLE_SLOT_SPEED_ABILITY': {
+      const team = [...state.team]
+      const slot = team[action.slot]
+      team[action.slot] = { ...slot, speedAbilityActive: !slot.speedAbilityActive }
       return { ...state, team }
     }
 

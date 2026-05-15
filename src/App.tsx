@@ -13,16 +13,18 @@ import CalcSidebar from './components/CalcSidebar'
 import ResultsPanel from './components/ResultsPanel/ResultsPanel'
 import TeamBuilderView from './components/TeamBuilderView'
 import MatchupTab from './components/MatchupTab/MatchupTab'
+import NewTeamBuilder from './components/NewTeamBuilder'
 
 function AppInner() {
   useCalc()
   useEffect(() => { prefetchItemDescs(); prefetchAbilityDescs(); prefetchMoveMeta(); prefetchUsageData() }, [])
-  const [tab, setTab] = useState<Tab>('team')
+  const [tab, setTab] = useState<Tab>('new-team')
 
   return (
     <>
       <Header activeTab={tab} onTabChange={setTab} />
-      {tab === 'team' && <TeamBuilderView />}
+      {tab === 'new-team' && <NewTeamBuilder />}
+      {tab === 'archive' && <TeamBuilderView />}
       {tab === 'calc' && (
         <div className="matchup-root">
           <div className="matchup-layout">

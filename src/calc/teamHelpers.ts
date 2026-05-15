@@ -43,3 +43,27 @@ export function spriteUrl(name: string): string {
   }
   return `https://www.coupcritique.fr/images/pokemons/sprites/${slug.replace(/ /g, '-')}.png`
 }
+
+export function artworkUrl(name: string): string {
+  if (!name) return ''
+  let slug = name.toLowerCase()
+  
+  // Gestion spécifique des Méga-Évolutions pour Showdown
+  // Format attendu: pokemon-mega, pokemon-megax, pokemon-megay
+  if (slug.startsWith('mega ')) {
+    const base = slug.replace('mega ', '')
+    if (base.endsWith(' x')) {
+      slug = base.replace(' x', '-megax')
+    } else if (base.endsWith(' y')) {
+      slug = base.replace(' y', '-megay')
+    } else {
+      slug = base + '-mega'
+    }
+  }
+
+  // Nettoyage des caractères spéciaux restants
+  slug = slug.replace(/ /g, '-').replace(/['. :]/g, '')
+  
+  return `https://play.pokemonshowdown.com/sprites/ani/${slug}.gif`
+}
+

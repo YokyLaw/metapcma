@@ -50,7 +50,8 @@
       "Bash(rtk lint *)",
       "Bash(rtk proxy *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yokyl\\\\Documents\\\\Dev\\\\metapcma\" -Recurse -Force)",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(curl *)"
     ]
   }
 }

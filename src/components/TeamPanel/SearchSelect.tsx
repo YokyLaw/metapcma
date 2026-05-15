@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, type CSSProperties } from 'react'
 
+import { POKEMON_TRANSLATIONS, TYPE_TRANSLATIONS } from '../../data/translations'
+
 export interface SearchOption {
   value: string
   label: string
@@ -22,6 +24,7 @@ interface Props {
   className?: string
   getDescription?: (value: string) => string | undefined
   getMeta?: (value: string) => string | undefined
+  showSearchIcon?: boolean
 }
 
 interface TooltipState {
@@ -44,6 +47,7 @@ export default function SearchSelect({
   className = '',
   getDescription,
   getMeta,
+  showSearchIcon = false,
 }: Props) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
@@ -53,6 +57,8 @@ export default function SearchSelect({
   const inputRef = useRef<HTMLInputElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const translate = (val: string) => POKEMON_TRANSLATIONS[val] || val
 
   useEffect(() => {
     if (!open) return
@@ -85,12 +91,17 @@ export default function SearchSelect({
   }, [tooltip])
 
   const currentOption = useMemo(() => options.find(o => o.value === value), [options, value])
-  const currentLabel = currentOption?.label ?? value
+  const currentLabel = currentOption ? translate(currentOption.label) : translate(value)
 
   const filtered = useMemo(() => {
-    if (!search) return maxUnfiltered > 0 ? options.slice(0, maxUnfiltered) : options
     const q = search.toLowerCase()
-    return options.filter(o => String(o.label ?? '').toLowerCase().includes(q))
+    const allFiltered = options.filter(o => {
+      const fr = (POKEMON_TRANSLATIONS[o.label] || '').toLowerCase()
+      const en = o.label.toLowerCase()
+      return en.includes(q) || fr.includes(q)
+    })
+    if (!search && maxUnfiltered > 0) return allFiltered.slice(0, maxUnfiltered)
+    return allFiltered
   }, [options, search, maxUnfiltered])
 
   function openDropdown() {
@@ -160,17 +171,20 @@ export default function SearchSelect({
   return (
     <div className={'search-select' + (className ? ' ' + className : '')} ref={ref} onClick={e => e.stopPropagation()} onMouseLeave={handleLeave}>
       {open ? (
-        <input
-          ref={inputRef}
-          className="search-select-input"
-          value={search}
-          placeholder="Rechercher..."
-          onChange={e => setSearch(e.target.value)}
-          onClick={e => e.stopPropagation()}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && filtered.length > 0) select(filtered[0].value)
-          }}
-        />
+        <div className="search-input-wrapper">
+          {showSearchIcon && <span className="search-icon">🔍</span>}
+          <input
+            ref={inputRef}
+            className="search-select-input"
+            value={search}
+            placeholder="Rechercher..."
+            onChange={e => setSearch(e.target.value)}
+            onClick={e => e.stopPropagation()}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && filtered.length > 0) select(filtered[0].value)
+            }}
+          />
+        </div>
       ) : (() => {
         const triggerDesc = value ? (getDescription ? getDescription(value) : currentOption?.description) : undefined
         return (
@@ -180,12 +194,15 @@ export default function SearchSelect({
             onMouseEnter={triggerDesc ? e => handleEnter(e, triggerDesc) : undefined}
             onMouseLeave={triggerDesc ? handleLeave : undefined}
           >
+            {showSearchIcon && !value && <span className="search-icon-placeholder">🔍</span>}
             {currentOption?.image && value && (
               <img className="search-select-img" src={currentOption.image} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />
             )}
             <span className="search-select-trigger-label">{value ? currentLabel : placeholder}</span>
             {currentOption?.types?.map(t => (
-              <span key={t} className="type-badge" style={{ background: `var(--${t})` }}>{t}</span>
+              <span key={t} className="type-badge" style={{ background: `var(--type-${t.toLowerCase()})` }}>
+                {TYPE_TRANSLATIONS[t] || t}
+              </span>
             ))}
             {(() => { const m = getMeta ? getMeta(value) : currentOption?.meta; return m ? <span className="search-select-meta">{m}</span> : null })()}
           </div>
@@ -216,7 +233,7 @@ export default function SearchSelect({
                 >
                   <span className="search-select-item-left">
                     {o.image && <img className="search-select-img" src={o.image} alt="" onError={e => { e.currentTarget.style.display = 'none' }} />}
-                    <span>{o.label}</span>
+                    <span>{translate(o.label)}</span>
                   </span>
                   {(() => { const m = getMeta ? getMeta(o.value) : o.meta; return m ? <span className="search-select-meta">{m}</span> : null })()}
                 </li>
@@ -235,3 +252,4 @@ export default function SearchSelect({
     </div>
   )
 }
+

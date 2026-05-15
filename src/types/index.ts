@@ -66,6 +66,7 @@ export interface TeamSlot {
   preMegaItem: string;
   useDefaultSet: boolean;
   preDefaultSet: DefaultSetSnapshot | null;
+  speedAbilityActive?: boolean;
 }
 
 export interface AdvOverride {
