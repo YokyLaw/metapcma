@@ -194,7 +194,6 @@ export const POKEMON_TRANSLATIONS: Record<string, string> = {
   "Decidueye-Hisui": "Archéduc de Hisui",
   "Avalugg-Hisui": "Séracrawl de Hisui",
   "Goodra-Hisui": "Muplodocus de Hisui",
-  "Samurott-Hisui": "Clamiral de Hisui",
 };
 
 export const TYPE_TRANSLATIONS: Record<string, string> = {
