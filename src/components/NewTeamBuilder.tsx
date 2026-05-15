@@ -230,7 +230,7 @@ export default function NewTeamBuilder() {
 
   const handleNicknameChange = (val: string) => {
     setLocalNickname(val)
-    dispatch({ type: 'UPDATE_SLOT_NOTES', slot: activeSlotIdx, notes: val })
+    dispatch({ type: 'SET_SLOT_NOTES', slot: activeSlotIdx, notes: val })
   }
 
   const handleUpdateSP = (stat: string, value: number) => {
