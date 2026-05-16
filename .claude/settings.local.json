@@ -52,7 +52,11 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\yokyl\\\\Documents\\\\Dev\\\\metapcma\" -Recurse -Force)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(curl *)",
-      "PowerShell($r = Invoke-RestMethod -Uri \"https://www.coupcritique.fr/api/abilities\"; $r.abilities | ForEach-Object { \"$\\($_.name\\)|$\\($_.nom\\)\" }; Write-Host \"Total: $\\($r.abilities.Count\\)\")"
+      "PowerShell($r = Invoke-RestMethod -Uri \"https://www.coupcritique.fr/api/abilities\"; $r.abilities | ForEach-Object { \"$\\($_.name\\)|$\\($_.nom\\)\" }; Write-Host \"Total: $\\($r.abilities.Count\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(m['name'], '| loss:', m.get\\('pokemonMove',{}\\).get\\('championsLoss'\\), '| add:', m.get\\('pokemonMove',{}\\).get\\('championsAdd'\\)\\) for m in d.get\\('moves',[]\\) if 'tera' in m['name'].lower\\(\\) or 'blast' in m['name'].lower\\(\\) or m['name'] in ['Take Down','Protect','Fake Out']]\")",
+      "Bash(findstr /N \"^\")",
+      "Bash(findstr /R \"^[1-9][0-9]*:\")",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }

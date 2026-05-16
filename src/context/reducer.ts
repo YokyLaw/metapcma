@@ -1,4 +1,4 @@
-import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey, DefaultSetSnapshot, SpeedFilter } from '../types'
+import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey, DefaultSetSnapshot, SpeedFilter, OffFilter } from '../types'
 import { POKE_DATA } from '../data/pokeData'
 import { getMoveData } from '../calc/moveHelpers'
 import { MEGA_MAP } from '../data/megaMap'
@@ -62,7 +62,9 @@ function makeSlot(id: number): TeamSlot {
     useDefaultSet: false,
     preDefaultSet: null,
     speedAbilityActive: false,
+    offAbilityActive: false,
     speedFilters: [],
+    offFilters: [],
   }
 }
 
@@ -162,6 +164,7 @@ export type Action =
   | { type: 'TOGGLE_DEFAULT_SET'; slot: number }
   | { type: 'APPLY_DEFAULT_SET'; slot: number }
   | { type: 'TOGGLE_SLOT_SPEED_ABILITY'; slot: number }
+  | { type: 'TOGGLE_SLOT_OFF_ABILITY'; slot: number }
   | { type: 'SET_ADV_SPEED_BOOST'; value: number }
   | { type: 'SET_WEATHER'; weather: Weather }
   | { type: 'SET_TERRAIN'; terrain: Terrain }
@@ -201,6 +204,8 @@ export type Action =
   | { type: 'SET_MATCHUP_ROWS'; matchupRows: TableRow[] }
   | { type: 'ADD_SPEED_FILTER'; slot: number; filter: SpeedFilter }
   | { type: 'REMOVE_SPEED_FILTER'; slot: number; id: string }
+  | { type: 'ADD_OFF_FILTER'; slot: number; filter: OffFilter }
+  | { type: 'REMOVE_OFF_FILTER'; slot: number; id: string }
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -213,6 +218,7 @@ export function appReducer(state: AppState, action: Action): AppState {
             item: extractStr((slot as unknown as Record<string, unknown>).item) || '(No Item)',
             moves: ((slot as unknown as Record<string, unknown>).moves as unknown[] ?? []).map(m => extractStr(m)) as [string, string, string, string],
             speedFilters: (slot as any).speedFilters ?? [],
+            offFilters: (slot as any).offFilters ?? [],
           }))
         : state.team
       const matchupCalcList = Array.isArray(action.payload.matchupCalcList)
@@ -238,6 +244,9 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.natMinus  = ''
         slot.megaForme = ''
         slot.speedAbilityActive = false
+        slot.offAbilityActive = false
+        slot.speedFilters   = []
+        slot.offFilters     = []
         slot.ccMoves        = null
         slot.ccItems        = null
         slot.ccAbilities    = null
@@ -749,6 +758,13 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, team }
     }
 
+    case 'TOGGLE_SLOT_OFF_ABILITY': {
+      const team = [...state.team]
+      const slot = team[action.slot]
+      team[action.slot] = { ...slot, offAbilityActive: !slot.offAbilityActive }
+      return { ...state, team }
+    }
+
     case 'ADD_SPEED_FILTER': {
       const team = [...state.team]
       const slot = { ...team[action.slot] }
@@ -761,6 +777,22 @@ export function appReducer(state: AppState, action: Action): AppState {
       const team = [...state.team]
       const slot = { ...team[action.slot] }
       slot.speedFilters = slot.speedFilters.filter(f => f.id !== action.id)
+      team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'ADD_OFF_FILTER': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+      slot.offFilters = [...(slot.offFilters ?? []), action.filter]
+      team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'REMOVE_OFF_FILTER': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+      slot.offFilters = (slot.offFilters ?? []).filter(f => f.id !== action.id)
       team[action.slot] = slot
       return { ...state, team }
     }

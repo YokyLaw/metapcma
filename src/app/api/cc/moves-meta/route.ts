@@ -1,6 +1,6 @@
 export const revalidate = 86400
 
-interface ListMove { id: number; name: string; category: string; power: number; type: { name: string } }
+interface ListMove { id: number; name: string; nom?: string | null; category: string; power: number; type: { name: string } }
 interface PerMove { move?: { priority?: number; flags?: { is_bullet?: boolean; is_bite?: boolean }; description?: string } }
 
 export interface MoveMetaEntry {
@@ -11,6 +11,7 @@ export interface MoveMetaEntry {
   isBullet: boolean
   isBite: boolean
   desc?: string
+  nom?: string
 }
 
 export async function GET() {
@@ -20,7 +21,7 @@ export async function GET() {
 
   const result: Record<string, MoveMetaEntry> = {}
   for (const m of moves) {
-    if (m.name) result[m.name] = { category: m.category, type: m.type?.name ?? '', bp: m.power ?? 0, isPriority: false, isBullet: false, isBite: false }
+    if (m.name) result[m.name] = { category: m.category, type: m.type?.name ?? '', bp: m.power ?? 0, isPriority: false, isBullet: false, isBite: false, nom: m.nom ?? undefined }
   }
 
   const BATCH = 60

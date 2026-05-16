@@ -6,6 +6,7 @@ export interface MoveMeta {
   isBullet: boolean
   isBite: boolean
   desc?: string
+  nom?: string
 }
 
 let cache: Record<string, MoveMeta> | null = null
@@ -26,4 +27,8 @@ export function getMoveMeta(name: string): MoveMeta | undefined {
 
 export function getMoveDesc(name: string): string | undefined {
   return cache?.[name]?.desc
+}
+
+export function getMoveNom(name: string): string {
+  return cache?.[name]?.nom || name
 }

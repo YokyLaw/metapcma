@@ -74,7 +74,9 @@ export default function TeamBuilderView() {
       useDefaultSet: false,
       preDefaultSet: null,
       speedAbilityActive: false,
+      offAbilityActive: false,
       speedFilters: [],
+      offFilters: [],
     }))
     dispatch({ type: 'LOAD_STATE', payload: { team: emptyTeam } })
   }
@@ -105,7 +107,9 @@ export default function TeamBuilderView() {
         useDefaultSet: false,
         preDefaultSet: null,
         speedAbilityActive: false,
+        offAbilityActive: false,
         speedFilters: [],
+        offFilters: [],
       }))
       const showdownToMega: Record<string, { baseName: string; megaName: string; stone: string }> = {}
       for (const [baseName, megas] of Object.entries(MEGA_MAP)) {

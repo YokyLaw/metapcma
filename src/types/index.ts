@@ -67,7 +67,9 @@ export interface TeamSlot {
   useDefaultSet: boolean;
   preDefaultSet: DefaultSetSnapshot | null;
   speedAbilityActive: boolean;
+  offAbilityActive: boolean;
   speedFilters: SpeedFilter[];
+  offFilters: OffFilter[];
   }
 
 export interface AdvOverride {
@@ -121,5 +123,15 @@ export interface SpeedFilter {
   pokemonName: string;
   speed: number;
   bonus?: string;
+}
+
+export type OffTier = 'ohko' | 'ko-poss' | 'ko-mid' | 'ko' | 'ko-low';
+
+export interface OffFilter {
+  id: string;
+  pokemonName: string;
+  tier?: OffTier;
+  minPct?: number;
+  maxPct?: number;
 }
 

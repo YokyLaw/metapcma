@@ -210,7 +210,7 @@ export default function DamageRow({ row, onSelect, isSelected, simplified, useAd
       ccNature: null, ccSps: null,
       preMegaAbility: '', preMegaItem: '',
       useDefaultSet: false, preDefaultSet: null,
-      speedAbilityActive: false, speedFilters: [],
+      speedAbilityActive: false, offAbilityActive: false, speedFilters: [], offFilters: [],
     }
     const atkAsDefOverride = {
       sp_hp: atkSlot.sps.hp, sp_df: atkSlot.sps.df, sp_sd: atkSlot.sps.sd,
