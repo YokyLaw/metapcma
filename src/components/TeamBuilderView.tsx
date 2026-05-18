@@ -111,6 +111,7 @@ export default function TeamBuilderView() {
         offAbilityActive: false,
         speedFilters: [],
         offFilters: [],
+        shiny: false,
       }))
       const showdownToMega: Record<string, { baseName: string; megaName: string; stone: string }> = {}
       for (const [baseName, megas] of Object.entries(MEGA_MAP)) {

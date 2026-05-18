@@ -224,6 +224,7 @@ export default function NewTeamBuilder() {
           meta: u > 0 ? `${Math.floor(u * 10) / 10}%` : undefined,
           image: spriteUrl(n),
           types: [POKE_DATA[n].t1, ...(POKE_DATA[n].t2 ? [POKE_DATA[n].t2] : [])],
+          disabled: usedPokemonNames.has(n),
         }
       })
   }, [usedPokemonNames, usageLoaded])
