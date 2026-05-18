@@ -19,20 +19,23 @@ export default function Header({ activeTab, onTabChange }: Props) {
           Teambuilder
         </button>
         <button
-          className={'tab-btn' + (activeTab === 'archive' ? ' active' : '')}
-          onClick={() => onTabChange('archive')}
+          className={'tab-btn' + (activeTab === 'archive' ? ' active' : '') + ' locked'}
+          onClick={() => {}}
+          disabled
         >
           Archive
         </button>
         <button
-          className={'tab-btn' + (activeTab === 'calc' ? ' active' : '')}
-          onClick={() => onTabChange('calc')}
+          className={'tab-btn' + (activeTab === 'calc' ? ' active' : '') + ' locked'}
+          onClick={() => {}}
+          disabled
         >
           Calc
         </button>
         <button
-          className={'tab-btn' + (activeTab === 'matchup' ? ' active' : '')}
-          onClick={() => onTabChange('matchup')}
+          className={'tab-btn' + (activeTab === 'matchup' ? ' active' : '') + ' locked'}
+          onClick={() => {}}
+          disabled
         >
           Matchup
         </button>

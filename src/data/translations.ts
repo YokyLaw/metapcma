@@ -581,3 +581,23 @@ export const ITEM_TRANSLATIONS: Record<string, string> = {
   "Silver Powder": "Poudre Argentée",
 };
 
+// Auto-generate French names for Mega Stones from MEGA_MAP + POKEMON_TRANSLATIONS.
+// Pattern: drop trailing 'e' on FR base name, append 'ite'. Preserve X/Y suffix.
+import { MEGA_MAP } from './megaMap'
+
+function megaStoneFR(frBaseName: string): string {
+  const trimmed = frBaseName.replace(/e$/i, '')
+  return trimmed + 'ite'
+}
+
+for (const [enBase, megas] of Object.entries(MEGA_MAP)) {
+  const frBase = POKEMON_TRANSLATIONS[enBase] || enBase
+  const stoneRoot = megaStoneFR(frBase)
+  for (const stone of Object.values(megas)) {
+    if (ITEM_TRANSLATIONS[stone]) continue
+    const m = /\s+([XY])$/.exec(stone)
+    const suffix = m ? ' ' + m[1] : ''
+    ITEM_TRANSLATIONS[stone] = stoneRoot + suffix
+  }
+}
+

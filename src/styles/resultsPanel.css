@@ -376,9 +376,10 @@
   font-size: 10px;
   color: inherit;
   flex: 1;
+  white-space: nowrap;
 }
 .adv-moves-empty { color: var(--muted); font-size: 12px; }
-.adv-move-immune { color: var(--muted); font-style: italic; }
+.adv-move-immune { color: var(--muted); font-style: italic; white-space: nowrap; }
 .adv-move-row.ko-low  { color: var(--danger); }
 .adv-move-row.ko      { color: #e07820; }
 .adv-move-row.ko-mid  { color: var(--text); }

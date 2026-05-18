@@ -70,6 +70,10 @@ export interface TeamSlot {
   offAbilityActive: boolean;
   speedFilters: SpeedFilter[];
   offFilters: OffFilter[];
+  defFilters?: DefFilter[];
+  offRepartMode?: 'common' | 'def';
+  defRepartMode?: 'common' | 'off';
+  shiny: boolean;
   }
 
 export interface AdvOverride {
@@ -128,6 +132,15 @@ export interface SpeedFilter {
 export type OffTier = 'ohko' | 'ko-poss' | 'ko-mid' | 'ko' | 'ko-low';
 
 export interface OffFilter {
+  id: string;
+  pokemonName: string;
+  tier?: OffTier;
+  minPct?: number;
+  maxPct?: number;
+  repartition?: 'none' | 'vig' | 'tank' | 'tank+';
+}
+
+export interface DefFilter {
   id: string;
   pokemonName: string;
   tier?: OffTier;

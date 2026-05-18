@@ -80,6 +80,7 @@ export default function TeamPanel() {
         offAbilityActive: false,
         speedFilters: [],
         offFilters: [],
+        shiny: false,
       }))
       blocks.slice(0, 6).forEach((block, i) => {
         const lines = block.split('\n').map(l => l.trim()).filter(l => !l.startsWith('//'))

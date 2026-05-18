@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo, useEffect } from "react";
 import { useAppState } from "../../context/AppContext";
+import "../../styles/autoModal.css";
 import { POKE_DATA } from "../../data/pokeData";
 import { getMoveData } from "../../calc/moveHelpers";
 import { getUsage, useUsageLoaded } from "../../hooks/useUsageData";
@@ -458,7 +459,27 @@ export default function AdvCard() {
     ];
   }, [ccItems]);
 
+  const [confirmNature, setConfirmNature] = useState<{
+    newNatPlus: string;
+    newNatMinus: string;
+  } | null>(null);
+
   function handleApplyCommonSet() {
+    const nextNatPlus = ccNature?.natPlus || "";
+    const nextNatMinus = ccNature?.natMinus || "";
+
+    if (nextNatPlus !== advNatPlus || nextNatMinus !== advNatMinus) {
+      setConfirmNature({
+        newNatPlus: nextNatPlus,
+        newNatMinus: nextNatMinus,
+      });
+      return;
+    }
+
+    applyCommonSet(nextNatPlus, nextNatMinus);
+  }
+
+  function applyCommonSet(np: string, nm: string) {
     const topAbility = isMegaRow
       ? megaOwnAbilities[0] || ""
       : extractName(ccAbilities[0]?.ability?.name as unknown) ||
@@ -475,8 +496,8 @@ export default function AdvCard() {
       pokeName: id,
       ccAbility: topAbility,
       ccItem: topItem,
-      ccNatPlus: ccNature?.natPlus || "",
-      ccNatMinus: ccNature?.natMinus || "",
+      ccNatPlus: np,
+      ccNatMinus: nm,
       ccSps: ccSps ?? null,
       ccMoves: moves4,
     });
@@ -793,6 +814,58 @@ export default function AdvCard() {
           >
             {copied ? "✓ Copié !" : "Export"}
           </button>
+        </div>
+      )}
+
+      {confirmNature && (
+        <div className="auto-modal-overlay" onClick={() => setConfirmNature(null)}>
+          <div className="auto-modal" onClick={e => e.stopPropagation()}>
+            <div className="auto-modal-header">
+              <span className="auto-modal-icon">⚠</span>
+              <h3>Modification de nature requise</h3>
+            </div>
+            <div className="auto-modal-body">
+              <p className="auto-modal-text">
+                L'application du set recommandé va modifier la nature :
+              </p>
+              <div className="auto-modal-natures">
+                <div className="auto-modal-nat-block">
+                  <span className="auto-modal-nat-tag current">Actuelle</span>
+                  <div className="auto-modal-nat plus faded">
+                    <span className="nat-sign">+</span>
+                    <span className="nat-stat">{advNatPlus ? NATURE_STAT_LABELS[advNatPlus] : '—'}</span>
+                  </div>
+                  <div className="auto-modal-nat minus faded">
+                    <span className="nat-sign">−</span>
+                    <span className="nat-stat">{advNatMinus ? NATURE_STAT_LABELS[advNatMinus] : '—'}</span>
+                  </div>
+                </div>
+                <span className="auto-modal-arrow">→</span>
+                <div className="auto-modal-nat-block">
+                  <span className="auto-modal-nat-tag new">Nouvelle</span>
+                  <div className="auto-modal-nat plus">
+                    <span className="nat-sign">+</span>
+                    <span className="nat-stat">{confirmNature.newNatPlus ? NATURE_STAT_LABELS[confirmNature.newNatPlus] : '—'}</span>
+                  </div>
+                  <div className="auto-modal-nat minus">
+                    <span className="nat-sign">−</span>
+                    <span className="nat-stat">{confirmNature.newNatMinus ? NATURE_STAT_LABELS[confirmNature.newNatMinus] : '—'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="auto-modal-actions">
+              <button className="auto-modal-btn cancel" onClick={() => setConfirmNature(null)}>
+                Annuler
+              </button>
+              <button className="auto-modal-btn confirm" onClick={() => {
+                applyCommonSet(confirmNature.newNatPlus, confirmNature.newNatMinus);
+                setConfirmNature(null);
+              }}>
+                Confirmer
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

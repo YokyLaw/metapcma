@@ -61,13 +61,11 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
       const u = getUsage(n)
       const pd = POKE_DATA[n]
       return {
-        value: n, label: n,
-        meta: u > 0 ? `${Math.floor(u * 10) / 10}%` : undefined,
-        image: spriteUrl(n),
-        disabled: usedPokemon.has(n),
-        types: pd ? [pd.t1, ...(pd.t2 ? [pd.t2] : [])] : undefined,
-      }
-    })
+      value: n, label: n,
+      meta: u > 0 ? `${Math.floor(u * 10) / 10}%` : undefined,
+      image: spriteUrl(n),
+      types: pd ? [pd.t1, ...(pd.t2 ? [pd.t2] : [])] : undefined,
+      }    })
   }, [usageLoaded, usedPokemon])
 
   useEffect(() => {
@@ -214,7 +212,6 @@ export default function PokemonCard({ slotIndex, showBoosts = false }: Props) {
       const megaInfo = _showdownToMega[pokeName]
       const resolvedName = megaInfo ? megaInfo.baseName : pokeName
       if (!POKE_DATA[resolvedName]) return
-      if (usedPokemon.has(resolvedName)) return
       const EV_REVERSE: Record<string, string> = { HP: 'hp', Atk: 'at', Def: 'df', SpA: 'sa', SpD: 'sd', Spe: 'sp' }
       let ability = ''
       let natPlusVal = ''

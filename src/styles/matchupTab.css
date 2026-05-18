@@ -308,6 +308,7 @@
   font-size: 10px;
   font-family: 'IBM Plex Mono', monospace;
   flex: 1;
+  white-space: nowrap;
 }
 
 .def-move-entry.ohko    .def-dmg-pct,
@@ -320,7 +321,7 @@
 .def-move-entry.ko      .def-move-name { color: #e07820; }
 .def-move-entry.ko-low  .def-dmg-pct,
 .def-move-entry.ko-low  .def-move-name { color: var(--danger); }
-.def-move-entry .adv-move-immune { color: var(--muted); font-style: italic; }
+.def-move-entry .adv-move-immune { color: var(--muted); font-style: italic; white-space: nowrap; }
 
 .matchup-remove-btn {
   position: absolute;

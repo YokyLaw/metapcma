@@ -1,4 +1,4 @@
-import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey, DefaultSetSnapshot, SpeedFilter, OffFilter } from '../types'
+import type { TeamSlot, StatMap, BoostMap, AdvOverride, TableRow, Weather, Terrain, SortKey, DefaultSetSnapshot, SpeedFilter, OffFilter, DefFilter } from '../types'
 import { POKE_DATA } from '../data/pokeData'
 import { getMoveData } from '../calc/moveHelpers'
 import { MEGA_MAP } from '../data/megaMap'
@@ -65,6 +65,10 @@ function makeSlot(id: number): TeamSlot {
     offAbilityActive: false,
     speedFilters: [],
     offFilters: [],
+    defFilters: [],
+    offRepartMode: 'common',
+    defRepartMode: 'common',
+    shiny: false,
   }
 }
 
@@ -154,7 +158,7 @@ export const initialState: AppState = {
 export type Action =
   | { type: 'LOAD_STATE'; payload: Partial<AppState> }
   | { type: 'SELECT_SLOT'; slot: number }
-  | { type: 'UPDATE_SLOT_FIELD'; slot: number; field: string; value: string }
+  | { type: 'UPDATE_SLOT_FIELD'; slot: number; field: string; value: string | boolean }
   | { type: 'UPDATE_MOVE'; slot: number; moveIdx: number; value: string }
   | { type: 'UPDATE_BOOST'; slot: number; stat: keyof BoostMap; value: number }
   | { type: 'UPDATE_SP'; slot: number; stat: keyof StatMap; value: number }
@@ -206,6 +210,9 @@ export type Action =
   | { type: 'REMOVE_SPEED_FILTER'; slot: number; id: string }
   | { type: 'ADD_OFF_FILTER'; slot: number; filter: OffFilter }
   | { type: 'REMOVE_OFF_FILTER'; slot: number; id: string }
+  | { type: 'ADD_DEF_FILTER'; slot: number; filter: DefFilter }
+  | { type: 'REMOVE_DEF_FILTER'; slot: number; id: string }
+  | { type: 'SET_REPART_MODE'; slot: number; table: 'off' | 'def'; mode: 'common' | 'off' | 'def' }
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -219,6 +226,7 @@ export function appReducer(state: AppState, action: Action): AppState {
             moves: ((slot as unknown as Record<string, unknown>).moves as unknown[] ?? []).map(m => extractStr(m)) as [string, string, string, string],
             speedFilters: (slot as any).speedFilters ?? [],
             offFilters: (slot as any).offFilters ?? [],
+            defFilters: (slot as any).defFilters ?? [],
           }))
         : state.team
       const matchupCalcList = Array.isArray(action.payload.matchupCalcList)
@@ -236,7 +244,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       ;(slot as Record<string, unknown>)[action.field] = action.value
 
       if (action.field === 'pokemon') {
-        const pd = POKE_DATA[action.value]
+        const pd = POKE_DATA[action.value as string]
         slot.ability   = pd?.ab ?? ''
         slot.sps       = { hp:0, at:0, df:0, sa:0, sd:0, sp:0 }
         slot.boosts    = { at:0, df:0, sa:0, sd:0, sp:0 }
@@ -247,6 +255,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         slot.offAbilityActive = false
         slot.speedFilters   = []
         slot.offFilters     = []
+        slot.defFilters     = []
         slot.ccMoves        = null
         slot.ccItems        = null
         slot.ccAbilities    = null
@@ -793,6 +802,31 @@ export function appReducer(state: AppState, action: Action): AppState {
       const team = [...state.team]
       const slot = { ...team[action.slot] }
       slot.offFilters = (slot.offFilters ?? []).filter(f => f.id !== action.id)
+      team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'ADD_DEF_FILTER': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+      slot.defFilters = [...(slot.defFilters ?? []), action.filter]
+      team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'REMOVE_DEF_FILTER': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+      slot.defFilters = (slot.defFilters ?? []).filter(f => f.id !== action.id)
+      team[action.slot] = slot
+      return { ...state, team }
+    }
+
+    case 'SET_REPART_MODE': {
+      const team = [...state.team]
+      const slot = { ...team[action.slot] }
+      if (action.table === 'off') slot.offRepartMode = action.mode as 'common' | 'def'
+      else slot.defRepartMode = action.mode as 'common' | 'off'
       team[action.slot] = slot
       return { ...state, team }
     }

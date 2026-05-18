@@ -68,8 +68,9 @@ export default function SearchSelect({
     const q = search.toLowerCase()
     const allFiltered = options.filter(o => {
       const fr = (POKEMON_TRANSLATIONS[o.label] || '').toLowerCase()
-      const en = o.label.toLowerCase()
-      return en.includes(q) || fr.includes(q)
+      const label = o.label.toLowerCase()
+      const value = (o.value || '').toLowerCase()
+      return label.includes(q) || fr.includes(q) || value.includes(q)
     })
     if (!search && maxUnfiltered > 0) return allFiltered.slice(0, maxUnfiltered)
     return allFiltered

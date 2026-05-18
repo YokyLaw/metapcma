@@ -56,7 +56,27 @@
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(m['name'], '| loss:', m.get\\('pokemonMove',{}\\).get\\('championsLoss'\\), '| add:', m.get\\('pokemonMove',{}\\).get\\('championsAdd'\\)\\) for m in d.get\\('moves',[]\\) if 'tera' in m['name'].lower\\(\\) or 'blast' in m['name'].lower\\(\\) or m['name'] in ['Take Down','Protect','Fake Out']]\")",
       "Bash(findstr /N \"^\")",
       "Bash(findstr /R \"^[1-9][0-9]*:\")",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); names=sorted\\({r['pokemon']['name'] for r in d['rows']}\\); print\\(len\\(names\\)\\); [print\\(n\\) for n in names if any\\(k in n.lower\\(\\) for k in ['miraidon','koraidon','urshifu','ogerpon','calyrex','rider','indeedee','flutter','iron','roaring','walking','great','sandy','brute','scream','slither','chien','yu','tin']\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); names=sorted\\({r['pokemon']['name'] for r in d['rows']}\\); [print\\(n\\) for n in names]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); u=d.get\\('usages',[]\\) or d.get\\('pokemon',{}\\).get\\('usages',[]\\); [print\\(x.get\\('provider'\\), x.get\\('percent'\\), x.get\\('tier',{}\\).get\\('name'\\) if x.get\\('tier'\\) else ''\\) for x in u]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); u=d.get\\('usages'\\) or d.get\\('pokemon',{}\\).get\\('usages'\\) or []; print\\('usages count:', len\\(u\\)\\); [print\\(x.get\\('provider'\\), x.get\\('percent'\\)\\) for x in u]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(list\\(d.keys\\(\\)\\)\\); print\\(list\\(d.get\\('pokemon',{}\\).keys\\(\\)\\)[:30]\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('championsSolo:', json.dumps\\(d.get\\('championsSoloUsage'\\),indent=2\\)[:500]\\); print\\('championsDuo:', json.dumps\\(d.get\\('championsDuoUsage'\\),indent=2\\)[:500]\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); rows = d if isinstance\\(d,list\\) else d.get\\('rows', d.get\\('tiers', []\\)\\); print\\('total:', len\\(rows\\)\\); [print\\(t.get\\('id'\\), '|', t.get\\('name'\\), '|', t.get\\('shortName'\\), '|', t.get\\('gen'\\), '|', t.get\\('isDouble'\\)\\) for t in rows if isinstance\\(t,dict\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(type\\(d\\)\\); print\\(list\\(d.keys\\(\\)\\) if isinstance\\(d,dict\\) else 'list len '+str\\(len\\(d\\)\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('message'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); rows=d.get\\('rows',[]\\); print\\('rows:', len\\(rows\\)\\); providers=set\\(r.get\\('provider'\\) for r in rows\\); print\\('providers:', providers\\); print\\('rank range:', min\\(r.get\\('rank'\\) or 999 for r in rows\\), max\\(r.get\\('rank'\\) or 0 for r in rows\\)\\); print\\('percent range:', min\\(r.get\\('percent',0\\) for r in rows\\), max\\(r.get\\('percent',0\\) for r in rows\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); u=d.get\\('usages',[]\\); print\\('usages:',len\\(u\\)\\); names=sorted\\({x['pokemon']['name'] for x in u}\\); print\\(len\\(names\\),'unique'\\); [print\\(n\\) for n in names if any\\(k in n.lower\\(\\) for k in ['miraidon','koraidon','urshifu','ogerpon','calyrex','rider','indeedee','flutter','iron','roaring','walking','great','sandy','brute','scream','slither','chien','yu','tin','zacian','zamazenta','kyogre','groudon','rayquaza','mewtwo','dialga','palkia','xerneas','yveltal','lunala','solgaleo','necrozma','reshiram','zekrom','kyurem']\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); rows=d.get\\('rows',[]\\); print\\('rows:',len\\(rows\\)\\); names=sorted\\({r['pokemon']['name'] for r in rows}\\); print\\(len\\(names\\),'unique'\\); [print\\(n\\) for n in names if any\\(k in n.lower\\(\\) for k in ['miraidon','koraidon','calyrex','zacian','zamazenta','kyogre','groudon','rayquaza','dialga','palkia','xerneas','yveltal','lunala','solgaleo','necrozma','reshiram','zekrom','kyurem','lugia','ho-oh','mewtwo','urshifu','ogerpon','flutter','iron','roaring','walking','great','sandy','brute','scream','slither','chien','yu','ting']\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); rows=d.get\\('rows',[]\\); names=sorted\\({r['pokemon']['name'] for r in rows}\\); [print\\(n\\) for n in names]\")",
+      "Read(//tmp/**)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('championsSolo:', d.get\\('championsSoloUsage'\\)\\); print\\('championsDuo:', d.get\\('championsDuoUsage'\\)\\); print\\('champions flag:', d.get\\('pokemon',{}\\).get\\('champions'\\)\\); print\\('tier:', d.get\\('pokemon',{}\\).get\\('tier',{}\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); rows=d.get\\('rows',[]\\); pairs=sorted\\({\\(r['pokemon']['nom'],r['pokemon']['name']\\) for r in rows}\\); [print\\(f'{n:30}  {e}'\\) for n,e in pairs]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); pks=d.get\\('pokemons',[]\\); print\\('count:',len\\(pks\\)\\); names=sorted\\({p['name'] for p in pks}\\); print\\('uniq:',len\\(names\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); pks=d.get\\('pokemons',[]\\); print\\(len\\(pks\\)\\)\")",
+      "Bash(python *)",
+      "Bash(rtk npx *)"
     ]
   }
 }

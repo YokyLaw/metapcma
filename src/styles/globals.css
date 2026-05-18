@@ -14,12 +14,28 @@
   --slot-active: #1a000a;
   --surface: #151515;
 
-  --type-normal: #9ea09e; --type-fire: #e75f3b; --type-water: #6294f5;
-  --type-electric: #f8d948; --type-grass: #72c950; --type-ice: #96d9d6;
-  --type-fighting: #c12f2a; --type-poison: #a63f9e; --type-ground: #d9a550;
-  --type-flying: #89aae3; --type-psychic: #e8536e; --type-bug: #a8b820;
-  --type-rock: #b8a038; --type-ghost: #705898; --type-dragon: #6f35fc;
-  --type-dark: #4f3a26; --type-steel: #b8b8d0; --type-fairy: #f0a2c0;
+  --type-normal: #A8A77A; --type-fire: #EE8130; --type-water: #6390F0;
+  --type-electric: #F7D02C; --type-grass: #7AC74C; --type-ice: #96D9D6;
+  --type-fighting: #C22E28; --type-poison: #A33EA1; --type-ground: #E2BF65;
+  --type-flying: #A98FF3; --type-psychic: #F95587; --type-bug: #A6B91A;
+  --type-rock: #B6A136; --type-ghost: #735797; --type-dragon: #6F35FC;
+  --type-dark: #705746; --type-steel: #B7B7CE; --type-fairy: #D685AD;
+}
+
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 2px 4px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
 }
 
 /* Legacy type variables for components not yet updated */

@@ -77,6 +77,7 @@ export default function TeamBuilderView() {
       offAbilityActive: false,
       speedFilters: [],
       offFilters: [],
+      shiny: false,
     }))
     dispatch({ type: 'LOAD_STATE', payload: { team: emptyTeam } })
   }

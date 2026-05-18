@@ -1,0 +1,298 @@
+.auto-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: autoModalFade 0.12s ease-out;
+}
+
+@keyframes autoModalFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.auto-modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  min-width: 380px;
+  max-width: 440px;
+  overflow: hidden;
+  animation: autoModalIn 0.14s ease-out;
+}
+
+@keyframes autoModalIn {
+  from { transform: translateY(4px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.auto-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.auto-modal-icon {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.auto-modal-header h3 {
+  margin: 0;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  letter-spacing: 0.4px;
+}
+
+.auto-modal-body {
+  padding: 18px 20px 14px;
+}
+
+.auto-modal-text {
+  margin: 0 0 16px 0;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  color: #f1f1f1;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auto-modal-text strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.auto-modal-natures {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  margin: 4px 0 16px;
+}
+
+.auto-modal-nat-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.auto-modal-nat-tag {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d8d8d8;
+}
+
+.auto-modal-nat-tag.new {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.auto-modal-nat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  min-width: 86px;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.auto-modal-nat.plus .nat-sign { color: #6fbf73; }
+.auto-modal-nat.minus .nat-sign { color: #c97070; }
+
+.auto-modal-nat.faded {
+  opacity: 0.5;
+}
+
+.auto-modal-nat .nat-sign {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.auto-modal-nat .nat-stat {
+  letter-spacing: 0.5px;
+}
+
+.auto-modal-arrow {
+  font-size: 18px;
+  color: var(--muted);
+  align-self: center;
+  margin-top: 16px;
+}
+
+.auto-modal-list {
+  margin: 0 0 12px 0;
+  padding: 0 0 0 18px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  color: #f1f1f1;
+  line-height: 1.6;
+}
+
+.auto-modal-note {
+  margin: 0;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  color: #d8d8d8;
+  text-align: center;
+  padding: 6px 10px;
+}
+
+.auto-modal-note strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.auto-modal-note.warn {
+  color: #e5b85a;
+}
+
+.auto-modal-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
+}
+
+.auto-modal-btn {
+  padding: 7px 18px;
+  border-radius: 5px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.auto-modal-btn.cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.auto-modal-btn.cancel:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.auto-modal-btn.confirm {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.auto-modal-btn.confirm:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--text);
+}
+
+/* Weather / Terrain picker modal */
+.weather-picker-modal {
+  min-width: 320px;
+  max-width: 380px;
+}
+
+/* Weather / Terrain inline popover (Teambuilder EVs Off toolbar) */
+.off-toolbar-popover-wrap {
+  position: relative;
+}
+
+.off-toolbar-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  animation: autoModalIn 0.12s ease-out;
+  white-space: nowrap;
+}
+
+.off-toolbar-popover .weather-picker-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.off-toolbar-popover .weather-picker-btn {
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.picker-neutre-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.weather-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.weather-picker-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  text-align: center;
+}
+
+.weather-picker-btn:hover {
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.weather-picker-btn.selected {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.weather-picker-btn.Sun      { background: rgba(255, 102,   0, 0.12); color: #ffb380; border-color: rgba(255, 102,   0, 0.35); }
+.weather-picker-btn.Rain     { background: rgba(  0, 102, 255, 0.12); color: #8ab4ff; border-color: rgba(  0, 102, 255, 0.35); }
+.weather-picker-btn.Sand     { background: rgba(194, 163, 102, 0.12); color: #d4b87e; border-color: rgba(194, 163, 102, 0.35); }
+.weather-picker-btn.Snow     { background: rgba(153, 204, 255, 0.10); color: #c2dcff; border-color: rgba(153, 204, 255, 0.30); }
+.weather-picker-btn.Electric { background: rgba(255, 204,   0, 0.12); color: #ffd966; border-color: rgba(255, 204,   0, 0.35); }
+.weather-picker-btn.Grassy   { background: rgba( 68, 204,  68, 0.12); color: #8edc8e; border-color: rgba( 68, 204,  68, 0.35); }
+.weather-picker-btn.Psychic  { background: rgba(255, 102, 204, 0.12); color: #ff99dd; border-color: rgba(255, 102, 204, 0.35); }
+.weather-picker-btn.Misty    { background: rgba(255, 179, 230, 0.10); color: #ffcce6; border-color: rgba(255, 179, 230, 0.30); }

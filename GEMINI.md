@@ -9,6 +9,7 @@ Do not make any changes until you have 95% confidence in what you need to build.
 - At 6+ messages, offer once to summarize key context for a fresh chat.
 - If I request a correction, note once that editing my last message saves tokens.”
 - If a task seems unrelated to the previous one, don't do anything, just tell me to use the clear command
+- Scope: modifications must only affect the Teambuilder tab content. If any other tab/area (Calc, Matchup, shared state, API routes, etc.) must be modified, ask for explicit permission first before making the change.
 
 #metapcma — VGC Champions Calc                                                                                                                                                                     
     2      
@@ -53,7 +54,7 @@ Do not make any changes until you have 95% confidence in what you need to build.
    41 ### Mega Evolution
    42 - Pre-mega snapshot stored in `TeamSlot` (`preMegaAbility`, `preMegaItem`)
    43 - Restored on deselect
-   44 - Charizard X/Y: filter moves by category (X=physical, Y=special)
+   - Charizard X/Y: moves are no longer filtered by category in the Teambuilder (was X=physical, Y=special)
    45 - `getEffectivePokeName()` resolves display name → base name for lookups
    46
    47 ### Opponent Overrides
